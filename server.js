@@ -6,14 +6,14 @@ import productRoutes from './routes/productRoutes.js';
 import uploadRoutes from './routes/uploadRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 import userRoutes from './routes/userRoutes.js';
-import cartRoutes from './routes/cartRoutes.js'; // Import cart routes
+import cartRoutes from './routes/cartRoutes.js';
 
 dotenv.config();
 
-// Check required environment variables
+// Ensure required environment variables are set
 if (!process.env.MONGO_URI) {
     console.error('❌ MONGO_URI is not set in the environment variables.');
-    process.exit(1); // Exit if MongoDB URI is not set
+    process.exit(1); // Exit the process if MONGO_URI is not set
 }
 
 if (!process.env.STRIPE_SECRET_KEY) {
@@ -22,9 +22,8 @@ if (!process.env.STRIPE_SECRET_KEY) {
 
 const app = express();
 
-// Dynamic CORS Configuration
+// Middleware for dynamic CORS configuration
 const allowedOrigins = ['http://localhost:5173', 'https://outlandi-co.netlify.app'];
-
 app.use(
     cors({
         origin: (origin, callback) => {
@@ -35,29 +34,38 @@ app.use(
                 callback(new Error('Not allowed by CORS'));
             }
         },
-        credentials: true, // Allow credentials (e.g., cookies, Authorization headers)
+        credentials: true, // Allow cookies and authorization headers
     })
 );
 
-app.use(express.json()); // Parse incoming JSON payloads
+// Middleware to parse JSON requests
+app.use(express.json());
+
+// Middleware to parse URL-encoded requests
+app.use(express.urlencoded({ extended: true }));
+
+// Health Check Route
+app.get('/health', (req, res) => {
+    res.status(200).json({ message: 'Server is healthy!' });
+});
 
 // API Routes
 app.use('/api/users', userRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/uploads', uploadRoutes);
 app.use('/api/payments', paymentRoutes);
-app.use('/api/cart', cartRoutes); // Add cart routes
+app.use('/api/cart', cartRoutes);
 
 // MongoDB Connection
 mongoose
     .connect(process.env.MONGO_URI, {
-        useNewUrlParser: true,
-        useUnifiedTopology: true,
+        useNewUrlParser: true, // Ensures compatibility with older connection strings
+        useUnifiedTopology: true, // Handles server discovery and monitoring
     })
     .then(() => console.log('✅ Connected to MongoDB'))
     .catch((err) => {
         console.error('❌ MongoDB Connection Error:', err.message);
-        process.exit(1); // Exit if MongoDB connection fails
+        process.exit(1); // Exit the process if the connection fails
     });
 
 // Global Error Handling Middleware
