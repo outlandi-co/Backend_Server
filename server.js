@@ -25,8 +25,8 @@ const app = express();
 // Middleware setup
 app.use(
     cors({
-        origin: 'http://localhost:5173', // Replace with your frontend URL
-        credentials: true, // Allow credentials (cookies, etc.)
+        origin: ['http://localhost:5173', 'https://outlandi-co.netlify.app'], // Add your Netlify URL
+        credentials: true, // Allow credentials (e.g., cookies)
     })
 );
 app.use(express.json()); // Parse incoming JSON payloads
