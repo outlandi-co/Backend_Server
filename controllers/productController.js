@@ -7,7 +7,10 @@ export const getProducts = async (req, res) => {
         res.status(200).json(products);
     } catch (error) {
         console.error('Error fetching products:', error.message);
-        res.status(500).json({ message: 'Failed to fetch products. Please try again later.' });
+        res.status(500).json({
+            message: 'Failed to fetch products. Please try again later.',
+            error: error.message,
+        });
     }
 };
 
@@ -21,7 +24,10 @@ export const getProductById = async (req, res) => {
         res.status(200).json(product);
     } catch (error) {
         console.error('Error fetching product:', error.message);
-        res.status(500).json({ message: 'Failed to fetch product. Please try again later.' });
+        res.status(500).json({
+            message: 'Failed to fetch product. Please try again later.',
+            error: error.message,
+        });
     }
 };
 
@@ -36,10 +42,16 @@ export const createProduct = async (req, res) => {
     try {
         const newProduct = new Product({ name, price, description, category, quantity, photo });
         const savedProduct = await newProduct.save();
-        res.status(201).json({ message: 'Product created successfully!', product: savedProduct });
+        res.status(201).json({
+            message: 'Product created successfully!',
+            product: savedProduct,
+        });
     } catch (error) {
         console.error('Error creating product:', error.message);
-        res.status(500).json({ message: 'Failed to create product. Please try again later.' });
+        res.status(500).json({
+            message: 'Failed to create product. Please try again later.',
+            error: error.message,
+        });
     }
 };
 
@@ -63,27 +75,52 @@ export const updateProduct = async (req, res) => {
         if (photo) product.photo = photo;
 
         const updatedProduct = await product.save();
-        res.status(200).json({ message: 'Product updated successfully!', product: updatedProduct });
+        res.status(200).json({
+            message: 'Product updated successfully!',
+            product: updatedProduct,
+        });
     } catch (error) {
         console.error('Error updating product:', error.message);
-        res.status(500).json({ message: 'Failed to update product. Please try again later.' });
+        res.status(500).json({
+            message: 'Failed to update product. Please try again later.',
+            error: error.message,
+        });
     }
 };
 
-// Delete a product
+// Delete a single product
 export const deleteProduct = async (req, res) => {
     const { id } = req.params;
 
     try {
-        const product = await Product.findById(id);
+        const product = await Product.findByIdAndDelete(id);
         if (!product) {
             return res.status(404).json({ message: 'Product not found.' });
         }
 
-        await Product.deleteOne({ _id: id });
         res.status(200).json({ message: 'Product deleted successfully.' });
     } catch (error) {
         console.error('Error deleting product:', error.message);
-        res.status(500).json({ message: 'Failed to delete product. Please try again later.' });
+        res.status(500).json({
+            message: 'Failed to delete product. Please try again later.',
+            error: error.message,
+        });
+    }
+};
+
+// Delete all products
+export const deleteAllProducts = async (req, res) => {
+    try {
+        const result = await Product.deleteMany({}); // Deletes all documents in the collection
+        res.status(200).json({
+            message: 'All products deleted successfully.',
+            deletedCount: result.deletedCount,
+        });
+    } catch (error) {
+        console.error('Error deleting all products:', error.message);
+        res.status(500).json({
+            message: 'Failed to delete all products. Please try again later.',
+            error: error.message,
+        });
     }
 };

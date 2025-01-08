@@ -4,9 +4,11 @@ import bcrypt from 'bcryptjs';
 const userSchema = new mongoose.Schema({
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true },
+    username: { type: String, unique: true, sparse: true }, // Add 'sparse' to allow null values
     password: { type: String, required: true },
     isAdmin: { type: Boolean, default: false },
 });
+
 
 // Hash the password before saving
 userSchema.pre('save', async function (next) {

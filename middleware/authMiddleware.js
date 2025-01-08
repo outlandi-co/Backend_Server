@@ -20,21 +20,21 @@ export const protect = asyncHandler(async (req, res, next) => {
             next(); // Proceed to the next middleware or route handler
         } catch (error) {
             console.error('Authorization error:', error);
-            res.status(401);
-            throw new Error('Not authorized, token failed.');
+            res.status(401).json({
+                message: 'Not authorized, token failed.',
+                error: error.message,
+            }); // Added error message to response
         }
     } else {
-        res.status(401);
-        throw new Error('Not authorized, no token provided.');
+        res.status(401).json({ message: 'Not authorized, no token provided.' }); // Added error message to response
     }
 });
 
 // Admin Middleware (for routes requiring admin access)
-export const admin = (req, res, next) => {
+export const admin = asyncHandler(async (req, res, next) => {
     if (req.user && req.user.isAdmin) {
         next(); // User is an admin, allow access to the route
     } else {
-        res.status(403);
-        throw new Error('Not authorized as admin.');
+        res.status(403).json({ message: 'Not authorized as admin.' }); // Return 403 for unauthorized admin access
     }
-};
+});

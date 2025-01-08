@@ -2,16 +2,18 @@ import express from 'express';
 import cors from 'cors';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
-import userRoutes from './routes/userRoutes.js';
 import productRoutes from './routes/productRoutes.js';
 import uploadRoutes from './routes/uploadRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
+import userRoutes from './routes/userRoutes.js';
+import cartRoutes from './routes/cartRoutes.js'; // Import cart routes
 
 dotenv.config();
 
 // Check required environment variables
 if (!process.env.MONGO_URI) {
-    throw new Error('MONGO_URI is not set in the environment variables.');
+    console.error('❌ MONGO_URI is not set in the environment variables.');
+    process.exit(1); // Exit if MongoDB URI is not set
 }
 
 if (!process.env.STRIPE_SECRET_KEY) {
@@ -20,30 +22,40 @@ if (!process.env.STRIPE_SECRET_KEY) {
 
 const app = express();
 
-// Middleware
-app.use(cors());
-app.use(express.json());
+// Middleware setup
+app.use(
+    cors({
+        origin: 'http://localhost:5173', // Replace with your frontend URL
+        credentials: true, // Allow credentials (cookies, etc.)
+    })
+);
+app.use(express.json()); // Parse incoming JSON payloads
 
 // API Routes
 app.use('/api/users', userRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/uploads', uploadRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/cart', cartRoutes); // Add cart routes
 
 // MongoDB Connection
 mongoose
     .connect(process.env.MONGO_URI, {
+        useNewUrlParser: true,
+        useUnifiedTopology: true,
     })
     .then(() => console.log('✅ Connected to MongoDB'))
     .catch((err) => {
         console.error('❌ MongoDB Connection Error:', err.message);
-        process.exit(1); // Exit process with failure
+        process.exit(1); // Exit if MongoDB connection fails
     });
 
-// Error Handling Middleware
+// Global Error Handling Middleware
 app.use((err, req, res, next) => {
     console.error('❌ Error:', err.stack);
-    res.status(500).json({ message: err.message });
+    res.status(err.statusCode || 500).json({
+        message: err.message || 'Internal Server Error',
+    });
 });
 
 // Start the Server

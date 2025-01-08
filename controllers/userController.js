@@ -6,7 +6,7 @@ import generateToken from '../utils/generateToken.js';
 // @route   POST /api/users/register
 // @access  Public
 export const registerUser = asyncHandler(async (req, res) => {
-    const { name, email, password } = req.body;
+    const { name, email, password, username } = req.body;
 
     if (!name || !email || !password) {
         res.status(400);
@@ -14,50 +14,70 @@ export const registerUser = asyncHandler(async (req, res) => {
     }
 
     const userExists = await User.findOne({ email });
-
     if (userExists) {
         res.status(400);
-        throw new Error('User already exists.');
+        throw new Error('User already exists with this email.');
     }
 
-    const user = await User.create({ name, email, password });
+    const user = await User.create({
+        name,
+        email,
+        password,
+        username: username || email.split('@')[0], // Default username if not provided
+    });
 
     if (user) {
         res.status(201).json({
-            id: user._id,
+            _id: user._id,
             name: user.name,
             email: user.email,
+            username: user.username,
+            isAdmin: user.isAdmin,
             token: generateToken(user._id),
         });
     } else {
         res.status(400);
-        throw new Error('Failed to create user.');
+        throw new Error('Invalid user data');
     }
 });
 
-// @desc    Authenticate user and get token
-// @route   POST /api/users/login
-// @access  Public
-export const loginUser = asyncHandler(async (req, res) => {
-    const { email, password } = req.body;
+// @desc    Register an admin user
+// @route   POST /api/users/admin/register
+// @access  Private/Admin
+export const registerAdminUser = asyncHandler(async (req, res) => {
+    const { name, email, password, username } = req.body;
 
-    if (!email || !password) {
+    if (!name || !email || !password) {
         res.status(400);
         throw new Error('All fields are required.');
     }
 
-    const user = await User.findOne({ email });
+    const userExists = await User.findOne({ email });
+    if (userExists) {
+        res.status(400);
+        throw new Error('User already exists with this email.');
+    }
 
-    if (user && (await user.matchPassword(password))) {
-        res.status(200).json({
-            id: user._id,
+    const user = await User.create({
+        name,
+        email,
+        password,
+        username: username || email.split('@')[0], // Default username if not provided
+        isAdmin: true,
+    });
+
+    if (user) {
+        res.status(201).json({
+            _id: user._id,
             name: user.name,
             email: user.email,
+            username: user.username,
+            isAdmin: user.isAdmin,
             token: generateToken(user._id),
         });
     } else {
-        res.status(401);
-        throw new Error('Invalid email or password.');
+        res.status(400);
+        throw new Error('Invalid user data');
     }
 });
 
@@ -65,13 +85,42 @@ export const loginUser = asyncHandler(async (req, res) => {
 // @route   GET /api/users/profile
 // @access  Private
 export const getUserProfile = asyncHandler(async (req, res) => {
-    const user = await User.findById(req.user._id).select('-password');
+    const user = await User.findById(req.user._id);
 
     if (user) {
-        res.status(200).json(user);
+        res.json({
+            _id: user._id,
+            name: user.name,
+            email: user.email,
+            username: user.username,
+            isAdmin: user.isAdmin,
+        });
     } else {
         res.status(404);
-        throw new Error('User not found.');
+        throw new Error('User not found');
+    }
+});
+
+// @desc    Login user and return token
+// @route   POST /api/users/login
+// @access  Public
+export const loginUser = asyncHandler(async (req, res) => {
+    const { email, password } = req.body;
+
+    const user = await User.findOne({ email });
+
+    if (user && (await user.matchPassword(password))) {
+        res.json({
+            _id: user._id,
+            name: user.name,
+            email: user.email,
+            username: user.username,
+            isAdmin: user.isAdmin,
+            token: generateToken(user._id),
+        });
+    } else {
+        res.status(401);
+        throw new Error('Invalid email or password');
     }
 });
 
@@ -84,6 +133,7 @@ export const updateUserProfile = asyncHandler(async (req, res) => {
     if (user) {
         user.name = req.body.name || user.name;
         user.email = req.body.email || user.email;
+        user.username = req.body.username || user.username;
 
         if (req.body.password) {
             user.password = req.body.password;
@@ -91,14 +141,16 @@ export const updateUserProfile = asyncHandler(async (req, res) => {
 
         const updatedUser = await user.save();
 
-        res.status(200).json({
-            id: updatedUser._id,
+        res.json({
+            _id: updatedUser._id,
             name: updatedUser.name,
             email: updatedUser.email,
+            username: updatedUser.username,
+            isAdmin: updatedUser.isAdmin,
             token: generateToken(updatedUser._id),
         });
     } else {
         res.status(404);
-        throw new Error('User not found.');
+        throw new Error('User not found');
     }
 });
