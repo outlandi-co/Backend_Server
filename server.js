@@ -22,13 +22,23 @@ if (!process.env.STRIPE_SECRET_KEY) {
 
 const app = express();
 
-// Middleware setup
+// Dynamic CORS Configuration
+const allowedOrigins = ['http://localhost:5173', 'https://outlandi-co.netlify.app'];
+
 app.use(
     cors({
-        origin: ['http://localhost:5173', 'https://outlandi-co.netlify.app'], // Add your Netlify URL
-        credentials: true, // Allow credentials (e.g., cookies)
+        origin: (origin, callback) => {
+            if (!origin || allowedOrigins.includes(origin)) {
+                callback(null, true);
+            } else {
+                console.error(`❌ CORS Error: Origin ${origin} not allowed`);
+                callback(new Error('Not allowed by CORS'));
+            }
+        },
+        credentials: true, // Allow credentials (e.g., cookies, Authorization headers)
     })
 );
+
 app.use(express.json()); // Parse incoming JSON payloads
 
 // API Routes
