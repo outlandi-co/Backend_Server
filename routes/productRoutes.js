@@ -1,3 +1,5 @@
+import Product from '../models/Product.js';
+
 import express from 'express';
 import {
     getProducts,
@@ -18,15 +20,28 @@ router.use((req, res, next) => {
 });
 
 // Public Routes (no token required)
-router.get('/', async (req, res) => {
+router.post('/', async (req, res) => {
     try {
-        console.log('GET /api/products hit');
-        await getProducts(req, res);
+        console.log('POST /api/products endpoint hit');
+        const product = new Product(req.body);
+        const savedProduct = await product.save();
+        return res.status(201).json({
+            message: 'Product created successfully!',
+            product: savedProduct,
+        });
     } catch (error) {
-        console.error('Error in GET /api/products:', error.message);
-        res.status(500).json({ message: 'Server error while fetching products' });
+        console.error('Error creating product:', error.message);
+
+        // Ensure this is only sent if headers haven't been sent
+        if (!res.headersSent) {
+            return res.status(500).json({
+                message: 'Failed to create product. Please try again later.',
+                error: error.message,
+            });
+        }
     }
 });
+
 
 
 router.get('/', async (req, res, next) => {

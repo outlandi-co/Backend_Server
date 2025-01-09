@@ -11,10 +11,13 @@ import cartRoutes from './routes/cartRoutes.js';
 dotenv.config();
 
 // Validate required environment variables
-if (!process.env.MONGO_URI) {
-    console.error('❌ MONGO_URI is missing in the environment variables.');
-    process.exit(1);
-}
+const requiredEnvVars = ['MONGO_URI', 'JWT_SECRET'];
+requiredEnvVars.forEach((envVar) => {
+    if (!process.env[envVar]) {
+        console.error(`❌ Missing required environment variable: ${envVar}`);
+        process.exit(1);
+    }
+});
 
 if (!process.env.STRIPE_SECRET_KEY) {
     console.warn('⚠️ STRIPE_SECRET_KEY is not defined. Payment functionality may not work as expected.');
@@ -39,7 +42,6 @@ app.use(
     })
 );
 
-
 // Middleware to handle JSON and URL-encoded data
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -58,7 +60,7 @@ app.use('/api/cart', cartRoutes);
 
 // MongoDB Connection
 mongoose
-    .connect(process.env.MONGO_URI)
+    .connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
     .then(() => console.log('✅ Connected to MongoDB successfully'))
     .catch((err) => {
         console.error('❌ MongoDB Connection Error:', err.message);
@@ -67,14 +69,13 @@ mongoose
 
 // Global Error Handling Middleware
 app.use((err, req, res, next) => {
-    console.error('Global Error Handler:', err.stack);
+    console.error('❌ Global Error Handler:', err.stack);
     if (!res.headersSent) {
         res.status(err.status || 500).json({
             message: err.message || 'Internal Server Error',
         });
     }
 });
-
 
 // Start the Server
 const PORT = process.env.PORT || 5001;
