@@ -10,75 +10,63 @@ import cartRoutes from './routes/cartRoutes.js';
 
 dotenv.config();
 
-// Validate required environment variables
-const requiredEnvVars = ['MONGO_URI', 'JWT_SECRET'];
-requiredEnvVars.forEach((envVar) => {
-    if (!process.env[envVar]) {
-        console.error(`❌ Missing required environment variable: ${envVar}`);
-        process.exit(1);
-    }
-});
-
-if (!process.env.STRIPE_SECRET_KEY) {
-    console.warn('⚠️ STRIPE_SECRET_KEY is not defined. Payment functionality may not work as expected.');
-}
-
+// Initialize the Express app
 const app = express();
 
-// Dynamic CORS Configuration
+// Allowed origins (localhost for local development and Netlify domain for production)
 const allowedOrigins = ['http://localhost:5173', 'https://outlandi-co.netlify.app'];
 
+// CORS middleware setup to handle cross-origin requests
 app.use(
-    cors({
-        origin: (origin, callback) => {
-            if (!origin || allowedOrigins.includes(origin)) {
-                callback(null, true);
-            } else {
-                console.error(`CORS Error: ${origin} not allowed`);
-                callback(new Error('Not allowed by CORS'));
-            }
-        },
-        credentials: true,
-    })
+  cors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true); // Allow the request
+      } else {
+        callback(new Error('Not allowed by CORS')); // Reject the request if origin is not in allowedOrigins
+      }
+    },
+    credentials: true, // Allow cookies to be sent with requests
+  })
 );
 
-// Middleware to handle JSON and URL-encoded data
+// Middleware to parse JSON and URL-encoded bodies
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Health Check Route
+// Health check endpoint for server status
 app.get('/health', (req, res) => {
-    res.status(200).json({ message: 'Server is running and healthy!' });
+  res.status(200).json({ message: 'Server is running and healthy!' });
 });
 
-// API Routes
+// Define your API routes
 app.use('/api/users', userRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/uploads', uploadRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/cart', cartRoutes);
 
-// MongoDB Connection
+// MongoDB Connection with error handling
 mongoose
-    .connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
-    .then(() => console.log('✅ Connected to MongoDB successfully'))
-    .catch((err) => {
-        console.error('❌ MongoDB Connection Error:', err.message);
-        process.exit(1);
-    });
+  .connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+  .then(() => console.log('✅ Connected to MongoDB successfully'))
+  .catch((err) => {
+    console.error('❌ MongoDB Connection Error:', err.message);
+    process.exit(1); // Exit the server if MongoDB connection fails
+  });
 
-// Global Error Handling Middleware
+// Global error handling middleware
 app.use((err, req, res, next) => {
-    console.error('❌ Global Error Handler:', err.stack);
-    if (!res.headersSent) {
-        res.status(err.status || 500).json({
-            message: err.message || 'Internal Server Error',
-        });
-    }
+  console.error('❌ Global Error Handler:', err.stack);
+  if (!res.headersSent) {
+    res.status(err.status || 500).json({
+      message: err.message || 'Internal Server Error',
+    });
+  }
 });
 
-// Start the Server
+// Start the server on the specified port (default 5001)
 const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => {
-    console.log(`🚀 Server is running on port: ${PORT}`);
+  console.log(`🚀 Server is running on port: ${PORT}`);
 });
