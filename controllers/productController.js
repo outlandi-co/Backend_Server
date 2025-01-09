@@ -4,7 +4,7 @@ import Product from '../models/Product.js'; // Ensure this model is properly def
 export const getProducts = async (req, res) => {
     try {
         const products = await Product.find();
-        res.status(200).json(products);
+        res.status(200).json(products); // Single response here
     } catch (error) {
         console.error('Error fetching products:', error.message);
         res.status(500).json({
@@ -13,6 +13,8 @@ export const getProducts = async (req, res) => {
         });
     }
 };
+
+
 
 // Get a single product by ID
 export const getProductById = async (req, res) => {

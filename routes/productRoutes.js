@@ -26,57 +26,70 @@ router.get('/', async (req, res) => {
         console.error('Error in GET /api/products:', error.message);
         res.status(500).json({ message: 'Server error while fetching products' });
     }
-}); // Get all products
+});
 
-router.get('/:id', async (req, res) => {
+
+router.get('/', async (req, res, next) => {
     try {
-        console.log(`GET /api/products/${req.params.id} hit`);
-        await getProductById(req, res);
+        console.log('GET /api/products endpoint hit');
+        await getProducts(req, res); // getProducts sends the response itself
     } catch (error) {
-        console.error(`Error in GET /api/products/${req.params.id}:`, error.message);
-        res.status(500).json({ message: 'Server error while fetching the product' });
+        console.error('Error in GET /api/products:', error.message);
+        next(error); // Pass the error to the global error handler
     }
-}); // Get a product by ID
+});
+
+
 
 // Admin-Protected Routes (token required)
 router.post('/', protect, admin, async (req, res) => {
     try {
-        console.log('POST /api/products hit');
-        await createProduct(req, res);
+        console.log('POST /api/products endpoint hit');
+        const newProduct = await createProduct(req, res);
+        res.status(201).json(newProduct);
     } catch (error) {
-        console.error('Error in POST /api/products:', error.message);
+        console.error('Error creating product:', error.message);
         res.status(500).json({ message: 'Server error while creating product' });
     }
-}); // Create product
+});
 
 router.put('/:id', protect, admin, async (req, res) => {
     try {
-        console.log(`PUT /api/products/${req.params.id} hit`);
-        await updateProduct(req, res);
+        console.log(`PUT /api/products/${req.params.id} endpoint hit`);
+        const updatedProduct = await updateProduct(req, res);
+        if (!updatedProduct) {
+            return res.status(404).json({ message: 'Product not found' });
+        }
+        res.status(200).json(updatedProduct);
     } catch (error) {
-        console.error(`Error in PUT /api/products/${req.params.id}:`, error.message);
+        console.error(`Error updating product with ID ${req.params.id}:`, error.message);
         res.status(500).json({ message: 'Server error while updating product' });
     }
-}); // Update product
+});
 
 router.delete('/:id', protect, admin, async (req, res) => {
     try {
-        console.log(`DELETE /api/products/${req.params.id} hit`);
-        await deleteProduct(req, res);
+        console.log(`DELETE /api/products/${req.params.id} endpoint hit`);
+        const deletedProduct = await deleteProduct(req, res);
+        if (!deletedProduct) {
+            return res.status(404).json({ message: 'Product not found' });
+        }
+        res.status(200).json({ message: 'Product deleted successfully' });
     } catch (error) {
-        console.error(`Error in DELETE /api/products/${req.params.id}:`, error.message);
+        console.error(`Error deleting product with ID ${req.params.id}:`, error.message);
         res.status(500).json({ message: 'Server error while deleting product' });
     }
-}); // Delete product
+});
 
 router.delete('/', protect, admin, async (req, res) => {
     try {
-        console.log('DELETE /api/products hit');
+        console.log('DELETE /api/products endpoint hit');
         await deleteAllProducts(req, res);
+        res.status(200).json({ message: 'All products deleted successfully' });
     } catch (error) {
-        console.error('Error in DELETE /api/products:', error.message);
+        console.error('Error deleting all products:', error.message);
         res.status(500).json({ message: 'Server error while deleting all products' });
     }
-}); // Delete all products
+});
 
 export default router;

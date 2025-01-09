@@ -10,43 +10,43 @@ import cartRoutes from './routes/cartRoutes.js';
 
 dotenv.config();
 
-// Ensure required environment variables are set
+// Validate required environment variables
 if (!process.env.MONGO_URI) {
-    console.error('❌ MONGO_URI is not set in the environment variables.');
-    process.exit(1); // Exit the process if MONGO_URI is not set
+    console.error('❌ MONGO_URI is missing in the environment variables.');
+    process.exit(1);
 }
 
 if (!process.env.STRIPE_SECRET_KEY) {
-    console.warn('⚠️ STRIPE_SECRET_KEY is not set. Payment routes may not function properly.');
+    console.warn('⚠️ STRIPE_SECRET_KEY is not defined. Payment functionality may not work as expected.');
 }
 
 const app = express();
 
-// Middleware for dynamic CORS configuration
+// Dynamic CORS Configuration
 const allowedOrigins = ['http://localhost:5173', 'https://outlandi-co.netlify.app'];
+
 app.use(
     cors({
         origin: (origin, callback) => {
             if (!origin || allowedOrigins.includes(origin)) {
                 callback(null, true);
             } else {
-                console.error(`❌ CORS Error: Origin ${origin} not allowed`);
+                console.error(`CORS Error: ${origin} not allowed`);
                 callback(new Error('Not allowed by CORS'));
             }
         },
-        credentials: true, // Allow cookies and authorization headers
+        credentials: true,
     })
 );
 
-// Middleware to parse JSON requests
-app.use(express.json());
 
-// Middleware to parse URL-encoded requests
+// Middleware to handle JSON and URL-encoded data
+app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Health Check Route
 app.get('/health', (req, res) => {
-    res.status(200).json({ message: 'Server is healthy!' });
+    res.status(200).json({ message: 'Server is running and healthy!' });
 });
 
 // API Routes
@@ -58,26 +58,26 @@ app.use('/api/cart', cartRoutes);
 
 // MongoDB Connection
 mongoose
-    .connect(process.env.MONGO_URI, {
-        useNewUrlParser: true, // Ensures compatibility with older connection strings
-        useUnifiedTopology: true, // Handles server discovery and monitoring
-    })
-    .then(() => console.log('✅ Connected to MongoDB'))
+    .connect(process.env.MONGO_URI)
+    .then(() => console.log('✅ Connected to MongoDB successfully'))
     .catch((err) => {
         console.error('❌ MongoDB Connection Error:', err.message);
-        process.exit(1); // Exit the process if the connection fails
+        process.exit(1);
     });
 
 // Global Error Handling Middleware
 app.use((err, req, res, next) => {
-    console.error('❌ Error:', err.stack);
-    res.status(err.statusCode || 500).json({
-        message: err.message || 'Internal Server Error',
-    });
+    console.error('Global Error Handler:', err.stack);
+    if (!res.headersSent) {
+        res.status(err.status || 500).json({
+            message: err.message || 'Internal Server Error',
+        });
+    }
 });
+
 
 // Start the Server
 const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => {
-    console.log(`🚀 Server running at http://localhost:${PORT}`);
+    console.log(`🚀 Server is running on port: ${PORT}`);
 });
