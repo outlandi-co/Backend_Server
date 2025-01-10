@@ -16,19 +16,19 @@ const app = express();
 // Allowed origins (localhost for local development and Netlify domain for production)
 const allowedOrigins = ['http://localhost:5173', 'https://outlandi-co.netlify.app'];
 
-// CORS middleware setup to handle cross-origin requests
 app.use(
-  cors({
-    origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true); // Allow the request
-      } else {
-        callback(new Error('Not allowed by CORS')); // Reject the request if origin is not in allowedOrigins
-      }
-    },
-    credentials: true, // Allow cookies to be sent with requests
-  })
+    cors({
+        origin: (origin, callback) => {
+            if (!origin || allowedOrigins.includes(origin)) {
+                callback(null, true); // Allow the request
+            } else {
+                callback(new Error('Not allowed by CORS'));
+            }
+        },
+        credentials: true, // Allow cookies to be sent with requests
+    })
 );
+
 
 // Middleware to parse JSON and URL-encoded bodies
 app.use(express.json());
