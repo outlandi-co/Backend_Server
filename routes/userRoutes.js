@@ -12,14 +12,14 @@ import { protect } from '../middleware/authMiddleware.js';
 const router = express.Router();
 
 // Public Routes
-router.post('/register', registerUser); // Register User
-router.post('/login', loginUser); // Login User
-router.post('/forgot-password', forgotPassword); // Forgot Password
+router.post('/register', registerUser); // Register a new user
+router.post('/login', loginUser); // Authenticate user and get token
+router.post('/forgot-password', forgotPassword); // Trigger password reset email
+router.post('/reset-password', resetPassword); // Reset password with token
 
-// Protected Routes
-router.get('/profile', protect, getUserProfile); // Get Profile
-router.put('/profile', protect, updateUserProfile); // Update Profile
-router.post('/reset-password', resetPassword); // Reset Password
+// Protected Routes (Requires Authentication)
+router.get('/profile', protect, getUserProfile); // Get user profile
+router.put('/profile', protect, updateUserProfile); // Update user profile
 
 // Export the router as default
 export default router;

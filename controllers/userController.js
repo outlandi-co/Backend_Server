@@ -1,9 +1,8 @@
 import asyncHandler from 'express-async-handler';
 import User from '../models/User.js';
 import generateToken from '../utils/generateToken.js';
-import nodemailer from 'nodemailer';  // For sending emails
-import crypto from 'crypto'; // Secure token generation
-import bcrypt from 'bcryptjs';  // For hashing passwords
+import nodemailer from 'nodemailer';
+import bcrypt from 'bcryptjs';
 
 // @desc    Register a new user
 // @route   POST /api/users/register
@@ -17,19 +16,17 @@ export const registerUser = asyncHandler(async (req, res) => {
     }
 
     const userExists = await User.findOne({ email });
-
     if (userExists) {
         res.status(400);
         throw new Error('User already exists.');
     }
 
     const usernameToUse = username || email.split('@')[0];
-
     const user = await User.create({
         name,
         email,
         password,
-        username: usernameToUse
+        username: usernameToUse,
     });
 
     if (user) {
@@ -41,7 +38,7 @@ export const registerUser = asyncHandler(async (req, res) => {
             token: generateToken(user._id),
         });
     } else {
-        res.status(400);
+        res.status(500);
         throw new Error('Failed to create user.');
     }
 });
@@ -54,12 +51,17 @@ export const loginUser = asyncHandler(async (req, res) => {
 
     if (!email || !password) {
         res.status(400);
-        throw new Error('All fields are required.');
+        throw new Error('Email and password are required.');
     }
 
     const user = await User.findOne({ email });
+    if (!user) {
+        res.status(401);
+        throw new Error('Invalid email or password.');
+    }
 
-    if (user && (await user.matchPassword(password))) {
+    const isPasswordMatch = await user.matchPassword(password);
+    if (isPasswordMatch) {
         res.status(200).json({
             id: user._id,
             name: user.name,
@@ -120,16 +122,23 @@ export const updateUserProfile = asyncHandler(async (req, res) => {
 export const forgotPassword = asyncHandler(async (req, res) => {
     const { email } = req.body;
 
-    const user = await User.findOne({ email });
-    if (!user) {
+    if (!email) {
         res.status(400);
-        throw new Error('No user found with that email address');
+        throw new Error('Email is required.');
     }
 
-    const resetToken = crypto.randomBytes(32).toString('hex');
-    user.resetToken = resetToken;
-    user.resetTokenExpires = Date.now() + 3600000; // Token expires in 1 hour
+    const user = await User.findOne({ email });
+    if (!user) {
+        res.status(404);
+        throw new Error('No user found with that email address.');
+    }
+
+    console.log('Request received to reset password for:', email);
+
+    const resetToken = user.generateResetToken();
     await user.save();
+
+    console.log('Generated Reset Token:', resetToken);
 
     const transporter = nodemailer.createTransport({
         service: 'gmail',
@@ -143,12 +152,17 @@ export const forgotPassword = asyncHandler(async (req, res) => {
         from: process.env.EMAIL_USER,
         to: email,
         subject: 'Password Reset Request',
-        text: `Please use the following link to reset your password: https://outlandi-co.netlify.app/reset-password?token=${resetToken}`,
+        text: `Use this link to reset your password: https://outlandi-co.netlify.app/reset-password?token=${resetToken}`,
     };
 
-    await transporter.sendMail(mailOptions);
-
-    res.status(200).json({ message: 'Password reset email sent. Please check your inbox.' });
+    try {
+        const emailResult = await transporter.sendMail(mailOptions);
+        console.log('Email sending result:', emailResult.response);
+        res.status(200).json({ message: 'Password reset email sent. Please check your inbox.' });
+    } catch (error) {
+        console.error('Error sending email:', error);
+        res.status(500).json({ message: 'Failed to send password reset email.' });
+    }
 });
 
 // @desc    Reset password using reset token
@@ -157,26 +171,29 @@ export const forgotPassword = asyncHandler(async (req, res) => {
 export const resetPassword = asyncHandler(async (req, res) => {
     const { token, newPassword } = req.body;
 
-    // Find user by reset token and check if it has expired
+    if (!token || !newPassword) {
+        res.status(400);
+        throw new Error('Token and new password are required.');
+    }
+
     const user = await User.findOne({
         resetToken: token,
-        resetTokenExpires: { $gt: Date.now() }, // Check if the token has expired
+        resetTokenExpires: { $gt: Date.now() },
     });
 
     if (!user) {
         res.status(400);
-        throw new Error('Invalid or expired token');
+        throw new Error('Invalid or expired token.');
     }
 
-    // Hash the new password
-    user.password = await bcrypt.hash(newPassword, 10);
+    console.log('Reset token matched. Updating password for:', user.email);
 
-    // Clear the reset token and expiration time
+    user.password = await bcrypt.hash(newPassword, 10);
     user.resetToken = undefined;
     user.resetTokenExpires = undefined;
 
-    // Save the user with the new password
     await user.save();
+    console.log('Password reset successful for:', user.email);
 
     res.status(200).json({ message: 'Password has been successfully reset.' });
 });
