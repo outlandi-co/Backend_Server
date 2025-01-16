@@ -16,19 +16,21 @@ const app = express();
 // Allowed origins (localhost for local development and Netlify domain for production)
 const allowedOrigins = ['http://localhost:5173', 'https://outlandi-co.netlify.app'];
 
+// CORS configuration with more flexible origin handling
 app.use(
     cors({
         origin: (origin, callback) => {
-            if (!origin || allowedOrigins.includes(origin)) {
+            const regex = /^https:\/\/.*\.netlify\.app$/; // Allow all subdomains of Netlify
+            if (!origin || allowedOrigins.includes(origin) || regex.test(origin)) {
                 callback(null, true); // Allow the request
             } else {
+                console.error(`CORS error: Origin ${origin} is not allowed`);
                 callback(new Error('Not allowed by CORS'));
             }
         },
         credentials: true, // Allow cookies to be sent with requests
     })
 );
-
 
 // Middleware to parse JSON and URL-encoded bodies
 app.use(express.json());
@@ -48,7 +50,7 @@ app.use('/api/cart', cartRoutes);
 
 // MongoDB Connection with error handling
 mongoose
-  .connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+  .connect(process.env.MONGO_URI)
   .then(() => console.log('✅ Connected to MongoDB successfully'))
   .catch((err) => {
     console.error('❌ MongoDB Connection Error:', err.message);
