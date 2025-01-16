@@ -25,4 +25,7 @@ router.post('/reset-password', resetPassword); // Reset password using a token
 router.get('/profile', protect, getUserProfile); // Get user profile
 router.put('/profile', protect, updateUserProfile); // Update user profile
 
+
+// Export the router as default
 export default router;
+

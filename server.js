@@ -1,3 +1,5 @@
+//reover//
+
 import express from 'express';
 import cors from 'cors';
 import mongoose from 'mongoose';
@@ -7,6 +9,7 @@ import uploadRoutes from './routes/uploadRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import cartRoutes from './routes/cartRoutes.js';
+import { resetPassword } from './controllers/userController.js'; // Import resetPassword
 
 dotenv.config();
 
@@ -40,6 +43,9 @@ app.use(express.urlencoded({ extended: true }));
 app.get('/health', (req, res) => {
   res.status(200).json({ message: 'Server is running and healthy!' });
 });
+
+// Temporary direct route for testing /reset-password
+app.post('/api/users/reset-password', resetPassword);
 
 // Define your API routes
 app.use('/api/users', userRoutes);

@@ -1,3 +1,5 @@
+//recover//
+
 import asyncHandler from 'express-async-handler';
 import User from '../models/User.js';
 import generateToken from '../utils/generateToken.js';
@@ -17,14 +19,12 @@ export const registerUser = asyncHandler(async (req, res) => {
     }
 
     const userExists = await User.findOne({ email });
-
     if (userExists) {
         res.status(400);
         throw new Error('User already exists.');
     }
 
     const usernameToUse = username || email.split('@')[0];
-
     const user = await User.create({
         name,
         email,
@@ -41,7 +41,7 @@ export const registerUser = asyncHandler(async (req, res) => {
             token: generateToken(user._id),
         });
     } else {
-        res.status(400);
+        res.status(500);
         throw new Error('Failed to create user.');
     }
 });
@@ -54,12 +54,17 @@ export const loginUser = asyncHandler(async (req, res) => {
 
     if (!email || !password) {
         res.status(400);
-        throw new Error('All fields are required.');
+        throw new Error('Email and password are required.');
     }
 
     const user = await User.findOne({ email });
+    if (!user) {
+        res.status(401);
+        throw new Error('Invalid email or password.');
+    }
 
-    if (user && (await user.matchPassword(password))) {
+    const isPasswordMatch = await user.matchPassword(password);
+    if (isPasswordMatch) {
         res.status(200).json({
             id: user._id,
             name: user.name,
@@ -86,9 +91,9 @@ export const forgotPassword = asyncHandler(async (req, res) => {
         throw new Error('No user found with that email address.');
     }
 
-    const resetToken = crypto.randomBytes(32).toString('hex');
-    user.resetToken = resetToken;
-    user.resetTokenExpires = Date.now() + 3600000; // Token expires in 1 hour
+    console.log('Request received to reset password for:', email);
+
+    const resetToken = user.generateResetToken();
     await user.save();
 
     console.log('Generated reset token:', resetToken);
@@ -134,7 +139,7 @@ export const resetPassword = asyncHandler(async (req, res) => {
 
     const user = await User.findOne({
         resetToken: token,
-        resetTokenExpires: { $gt: Date.now() }, // Check if the token has expired
+        resetTokenExpires: { $gt: Date.now() },
     });
 
     if (!user) {
