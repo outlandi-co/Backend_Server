@@ -2,15 +2,20 @@
 
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto'; // For generating reset tokens
 
-const userSchema = new mongoose.Schema({
-    name: { type: String, required: true },
-    email: { type: String, required: true, unique: true },
-    username: { type: String, unique: true, sparse: true }, // Add 'sparse' to allow null values
-    password: { type: String, required: true },
-    isAdmin: { type: Boolean, default: false },
-});
-
+const userSchema = new mongoose.Schema(
+    {
+        name: { type: String, required: true },
+        email: { type: String, required: true, unique: true },
+        username: { type: String, unique: true, sparse: true }, // Allows null values for username
+        password: { type: String, required: true },
+        isAdmin: { type: Boolean, default: false },
+        resetToken: { type: String }, // Token for password reset
+        resetTokenExpires: { type: Date }, // Expiry for the reset token
+    },
+    { timestamps: true } // Adds createdAt and updatedAt fields
+);
 
 // Hash the password before saving
 userSchema.pre('save', async function (next) {
@@ -29,7 +34,15 @@ userSchema.pre('save', async function (next) {
 
 // Method: Compare entered password with hashed password
 userSchema.methods.matchPassword = async function (enteredPassword) {
-    return await bcrypt.compare(enteredPassword, this.password);
+    return bcrypt.compare(enteredPassword, this.password);
+};
+
+// Generate a password reset token
+userSchema.methods.generateResetToken = function () {
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    this.resetToken = crypto.createHash('sha256').update(resetToken).digest('hex'); // Hash the token
+    this.resetTokenExpires = Date.now() + 10 * 60 * 1000; // Token valid for 10 minutes
+    return resetToken; // Return plain text token for email
 };
 
 export default mongoose.model('User', userSchema);
