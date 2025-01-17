@@ -1,5 +1,3 @@
-//reover//
-
 import express from 'express';
 import cors from 'cors';
 import mongoose from 'mongoose';
@@ -9,7 +7,6 @@ import uploadRoutes from './routes/uploadRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import cartRoutes from './routes/cartRoutes.js';
-import { resetPassword } from './controllers/userController.js'; // Import resetPassword
 
 dotenv.config();
 
@@ -19,21 +16,19 @@ const app = express();
 // Allowed origins (localhost for local development and Netlify domain for production)
 const allowedOrigins = ['http://localhost:5173', 'https://outlandi-co.netlify.app'];
 
-// CORS configuration with more flexible origin handling
 app.use(
     cors({
         origin: (origin, callback) => {
-            const regex = /^https:\/\/.*\.netlify\.app$/; // Allow all subdomains of Netlify
-            if (!origin || allowedOrigins.includes(origin) || regex.test(origin)) {
+            if (!origin || allowedOrigins.includes(origin)) {
                 callback(null, true); // Allow the request
             } else {
-                console.error(`CORS error: Origin ${origin} is not allowed`);
                 callback(new Error('Not allowed by CORS'));
             }
         },
         credentials: true, // Allow cookies to be sent with requests
     })
 );
+
 
 // Middleware to parse JSON and URL-encoded bodies
 app.use(express.json());
@@ -44,9 +39,6 @@ app.get('/health', (req, res) => {
   res.status(200).json({ message: 'Server is running and healthy!' });
 });
 
-// Temporary direct route for testing /reset-password
-app.post('/api/users/reset-password', resetPassword);
-
 // Define your API routes
 app.use('/api/users', userRoutes);
 app.use('/api/products', productRoutes);
@@ -56,7 +48,7 @@ app.use('/api/cart', cartRoutes);
 
 // MongoDB Connection with error handling
 mongoose
-  .connect(process.env.MONGO_URI)
+  .connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
   .then(() => console.log('✅ Connected to MongoDB successfully'))
   .catch((err) => {
     console.error('❌ MongoDB Connection Error:', err.message);
