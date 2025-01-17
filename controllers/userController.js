@@ -1,9 +1,9 @@
 import asyncHandler from 'express-async-handler';
 import User from '../models/User.js';
 import generateToken from '../utils/generateToken.js';
-import nodemailer from 'nodemailer';  // For sending emails
+import nodemailer from 'nodemailer'; // For sending emails
 import crypto from 'crypto'; // Secure token generation
-import bcrypt from 'bcryptjs';  // For hashing passwords
+import bcrypt from 'bcryptjs'; // For hashing passwords
 
 // @desc    Register a new user
 // @route   POST /api/users/register

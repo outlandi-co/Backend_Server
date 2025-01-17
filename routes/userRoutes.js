@@ -5,7 +5,7 @@ import {
     forgotPassword,
     resetPassword,
     updateUserProfile,
-} from '../controllers/userController.js'; // Removed getUserProfile import
+} from '../controllers/userController.js';
 import { protect } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
@@ -23,5 +23,4 @@ router.post('/reset-password', resetPassword); // Reset password using a token
  */
 router.put('/profile', protect, updateUserProfile); // Update user profile
 
-// Export the router as default
 export default router;

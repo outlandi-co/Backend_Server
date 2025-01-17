@@ -29,14 +29,13 @@ app.use(
     })
 );
 
-
 // Middleware to parse JSON and URL-encoded bodies
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Health check endpoint for server status
 app.get('/health', (req, res) => {
-  res.status(200).json({ message: 'Server is running and healthy!' });
+    res.status(200).json({ message: 'Server is running and healthy!' });
 });
 
 // Define your API routes
@@ -48,25 +47,25 @@ app.use('/api/cart', cartRoutes);
 
 // MongoDB Connection with error handling
 mongoose
-  .connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(() => console.log('✅ Connected to MongoDB successfully'))
-  .catch((err) => {
-    console.error('❌ MongoDB Connection Error:', err.message);
-    process.exit(1); // Exit the server if MongoDB connection fails
-  });
+    .connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+    .then(() => console.log('✅ Connected to MongoDB successfully'))
+    .catch((err) => {
+        console.error('❌ MongoDB Connection Error:', err.message);
+        process.exit(1); // Exit the server if MongoDB connection fails
+    });
 
 // Global error handling middleware
 app.use((err, req, res, next) => {
-  console.error('❌ Global Error Handler:', err.stack);
-  if (!res.headersSent) {
-    res.status(err.status || 500).json({
-      message: err.message || 'Internal Server Error',
-    });
-  }
+    console.error('❌ Global Error Handler:', err.stack);
+    if (!res.headersSent) {
+        res.status(err.status || 500).json({
+            message: err.message || 'Internal Server Error',
+        });
+    }
 });
 
 // Start the server on the specified port (default 5001)
 const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => {
-  console.log(`🚀 Server is running on port: ${PORT}`);
+    console.log(`🚀 Server is running on port: ${PORT}`);
 });
