@@ -127,9 +127,9 @@ export const forgotPassword = asyncHandler(async (req, res) => {
     }
 
     const resetToken = crypto.randomBytes(32).toString('hex');
-    user.resetToken = resetToken;
-    user.resetTokenExpires = Date.now() + 3600000; // Token expires in 1 hour
-    await user.save();
+user.resetToken = resetToken;
+user.resetTokenExpires = Date.now() + 3600000; // 1 hour expiration
+await user.save();
 
     const transporter = nodemailer.createTransport({
         service: 'gmail',
@@ -143,7 +143,7 @@ export const forgotPassword = asyncHandler(async (req, res) => {
         from: process.env.EMAIL_USER,
         to: email,
         subject: 'Password Reset Request',
-        text: `Please use the following link to reset your password: https://outlandi-co.netlify.app/reset-password?token=${resetToken}`,
+        text: `Please use the following link to reset your password: ${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`,
     };
 
     await transporter.sendMail(mailOptions);
@@ -157,26 +157,26 @@ export const forgotPassword = asyncHandler(async (req, res) => {
 export const resetPassword = asyncHandler(async (req, res) => {
     const { token, newPassword } = req.body;
 
-    // Find user by reset token and check if it has expired
-    const user = await User.findOne({
-        resetToken: token,
-        resetTokenExpires: { $gt: Date.now() }, // Check if the token has expired
-    });
+    try {
+        const user = await User.findOne({
+            resetToken: token,
+            resetTokenExpires: { $gt: Date.now() }, // Check if the token is still valid
+        });
 
-    if (!user) {
-        res.status(400);
-        throw new Error('Invalid or expired token');
+        if (!user) {
+            return res.status(400).json({ message: 'Invalid or expired token' });
+        }
+
+        // Hash and update the new password
+        user.password = await bcrypt.hash(newPassword, 10);
+        user.resetToken = undefined; // Clear the token
+        user.resetTokenExpires = undefined;
+
+        await user.save();
+
+        res.status(200).json({ message: 'Password has been successfully reset.' });
+    } catch (err) {
+        console.error('Error resetting password:', err);
+        res.status(500).json({ message: 'Internal server error' });
     }
-
-    // Hash the new password
-    user.password = await bcrypt.hash(newPassword, 10);
-
-    // Clear the reset token and expiration time
-    user.resetToken = undefined;
-    user.resetTokenExpires = undefined;
-
-    // Save the user with the new password
-    await user.save();
-
-    res.status(200).json({ message: 'Password has been successfully reset.' });
 });

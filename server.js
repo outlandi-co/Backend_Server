@@ -13,6 +13,12 @@ dotenv.config();
 // Initialize the Express app
 const app = express();
 
+// Log all incoming requests
+app.use((req, res, next) => {
+    console.log(`Incoming Request: ${req.method} ${req.url}`);
+    next();
+});
+
 // Allowed origins (localhost for local development and Netlify domain for production)
 const allowedOrigins = ['http://localhost:5173', 'https://outlandi-co.netlify.app'];
 
@@ -53,6 +59,11 @@ mongoose
         console.error('❌ MongoDB Connection Error:', err.message);
         process.exit(1); // Exit the server if MongoDB connection fails
     });
+
+// Catch-all route for undefined API endpoints
+app.use((req, res, next) => {
+    res.status(404).json({ message: 'API endpoint not found.' });
+});
 
 // Global error handling middleware
 app.use((err, req, res, next) => {
