@@ -29,7 +29,7 @@ export const registerUser = asyncHandler(async (req, res) => {
         name,
         email,
         password,
-        username: usernameToUse,
+        username: usernameToUse
     });
 
     if (user) {
@@ -127,9 +127,9 @@ export const forgotPassword = asyncHandler(async (req, res) => {
     }
 
     const resetToken = crypto.randomBytes(32).toString('hex');
-    user.resetToken = resetToken;
-    user.resetTokenExpires = Date.now() + 3600000; // Token expires in 1 hour
-    await user.save();
+user.resetToken = resetToken;
+user.resetTokenExpires = Date.now() + 3600000; // 1 hour expiration
+await user.save();
 
     const transporter = nodemailer.createTransport({
         service: 'gmail',
@@ -160,16 +160,16 @@ export const resetPassword = asyncHandler(async (req, res) => {
     try {
         const user = await User.findOne({
             resetToken: token,
-            resetTokenExpires: { $gt: Date.now() },
+            resetTokenExpires: { $gt: Date.now() }, // Check if the token is still valid
         });
 
         if (!user) {
             return res.status(400).json({ message: 'Invalid or expired token' });
         }
 
-        // Update the user's password
+        // Hash and update the new password
         user.password = await bcrypt.hash(newPassword, 10);
-        user.resetToken = undefined;
+        user.resetToken = undefined; // Clear the token
         user.resetTokenExpires = undefined;
 
         await user.save();
