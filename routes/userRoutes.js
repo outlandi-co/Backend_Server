@@ -1,4 +1,3 @@
-// Updated userRoutes.js
 import express from 'express';
 import {
     registerUser,
@@ -12,11 +11,14 @@ import { protect } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-router.post('/register', registerUser);
-router.post('/login', loginUser);
-router.post('/forgot-password', forgotPassword);
-router.post('/reset-password/:userId', resetPassword);
-router.get('/profile', protect, getUserProfile);
-router.put('/profile', protect, updateUserProfile);
+// Public Routes
+router.post('/register', registerUser); // Register a new user
+router.post('/login', loginUser); // User login
+router.post('/forgot-password', forgotPassword); // Request password reset link
+router.post('/reset-password/:userId', resetPassword); // Reset password using token
+
+// Protected Routes
+router.get('/profile', protect, getUserProfile); // Get user profile (requires auth)
+router.put('/profile', protect, updateUserProfile); // Update user profile (requires auth)
 
 export default router;
