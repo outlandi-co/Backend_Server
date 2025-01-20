@@ -20,7 +20,10 @@ app.use((req, res, next) => {
 });
 
 // Allowed origins (localhost for local development and Netlify domain for production)
-const allowedOrigins = ['http://localhost:5173', 'https://outlandi-co.netlify.app'];
+const allowedOrigins = [
+    'http://localhost:5173',
+    'https://outlandi-co.netlify.app',
+];
 
 app.use(
     cors({
@@ -32,7 +35,7 @@ app.use(
                 callback(new Error('Not allowed by CORS'));
             }
         },
-        credentials: true, // Allow cookies to be sent with requests
+        credentials: true, // Allow cookies and credentials in requests
     })
 );
 
@@ -40,25 +43,25 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Health check endpoint for server status
+// Health check endpoint
 app.get('/health', (req, res) => {
     res.status(200).json({ message: 'Server is running and healthy!' });
 });
 
-// Define your API routes
-app.use('/api/users', userRoutes); // Routes for user-related operations
-app.use('/api/products', productRoutes); // Routes for products
-app.use('/api/uploads', uploadRoutes); // Routes for file uploads
-app.use('/api/payments', paymentRoutes); // Routes for payment processing
-app.use('/api/cart', cartRoutes); // Routes for cart operations
+// Define API routes
+app.use('/api/users', userRoutes); // User-related routes
+app.use('/api/products', productRoutes); // Product routes
+app.use('/api/uploads', uploadRoutes); // File upload routes
+app.use('/api/payments', paymentRoutes); // Payment processing routes
+app.use('/api/cart', cartRoutes); // Cart-related routes
 
-// MongoDB Connection with error handling
+// MongoDB Connection
 mongoose
     .connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
     .then(() => console.log('✅ Connected to MongoDB successfully'))
     .catch((err) => {
         console.error('❌ MongoDB Connection Error:', err.message);
-        process.exit(1); // Exit the server if MongoDB connection fails
+        process.exit(1); // Exit if connection fails
     });
 
 // Catch-all route for undefined API endpoints

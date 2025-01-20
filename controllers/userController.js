@@ -12,9 +12,9 @@ const generateToken = (id) => {
     });
 };
 
-// @desc    Register a new user
-// @route   POST /api/users/register
-// @access  Public
+// @desc Register a new user
+// @route POST /api/users/register
+// @access Public
 export const registerUser = asyncHandler(async (req, res) => {
     const { name, email, password } = req.body;
 
@@ -44,14 +44,14 @@ export const registerUser = asyncHandler(async (req, res) => {
             token: generateToken(user._id),
         });
     } else {
-        res.status(400);
-        throw new Error('Invalid user data.');
+        res.status(500);
+        throw new Error('Failed to create user. Please try again later.');
     }
 });
 
-// @desc    Login user & get token
-// @route   POST /api/users/login
-// @access  Public
+// @desc Login user & get token
+// @route POST /api/users/login
+// @access Public
 export const loginUser = asyncHandler(async (req, res) => {
     const { email, password } = req.body;
 
@@ -62,22 +62,28 @@ export const loginUser = asyncHandler(async (req, res) => {
 
     const user = await User.findOne({ email });
 
-    if (user && (await bcrypt.compare(password, user.password))) {
-        res.status(200).json({
-            id: user._id,
-            name: user.name,
-            email: user.email,
-            token: generateToken(user._id),
-        });
-    } else {
+    if (!user) {
         res.status(401);
         throw new Error('Invalid email or password.');
     }
+
+    const isPasswordMatch = await bcrypt.compare(password, user.password);
+    if (!isPasswordMatch) {
+        res.status(401);
+        throw new Error('Invalid email or password.');
+    }
+
+    res.status(200).json({
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        token: generateToken(user._id),
+    });
 });
 
-// @desc    Forgot password (send reset link)
-// @route   POST /api/users/forgot-password
-// @access  Public
+// @desc Forgot password (send reset link)
+// @route POST /api/users/forgot-password
+// @access Public
 export const forgotPassword = asyncHandler(async (req, res) => {
     const { email } = req.body;
 
@@ -97,7 +103,6 @@ export const forgotPassword = asyncHandler(async (req, res) => {
     user.resetTokenExpires = Date.now() + 3600000; // Token valid for 1 hour
     await user.save();
 
-    // Sanitize FRONTEND_URL to remove trailing slash
     const frontendUrl = process.env.FRONTEND_URL.replace(/\/$/, '');
     const resetLink = `${frontendUrl}/reset-password?token=${resetToken}&userId=${user._id}`;
 
@@ -125,9 +130,9 @@ export const forgotPassword = asyncHandler(async (req, res) => {
     }
 });
 
-// @desc    Reset password using reset token
-// @route   POST /api/users/reset-password/:userId
-// @access  Public
+// @desc Reset password using reset token
+// @route POST /api/users/reset-password/:userId
+// @access Public
 export const resetPassword = asyncHandler(async (req, res) => {
     const { userId } = req.params;
     const { token, newPassword } = req.body;
@@ -157,9 +162,9 @@ export const resetPassword = asyncHandler(async (req, res) => {
     res.status(200).json({ message: 'Password has been successfully reset.' });
 });
 
-// @desc    Get user profile
-// @route   GET /api/users/profile
-// @access  Private
+// @desc Get user profile
+// @route GET /api/users/profile
+// @access Private
 export const getUserProfile = asyncHandler(async (req, res) => {
     const user = await User.findById(req.user.id);
 
@@ -175,9 +180,9 @@ export const getUserProfile = asyncHandler(async (req, res) => {
     });
 });
 
-// @desc    Update user profile
-// @route   PUT /api/users/profile
-// @access  Private
+// @desc Update user profile
+// @route PUT /api/users/profile
+// @access Private
 export const updateUserProfile = asyncHandler(async (req, res) => {
     const user = await User.findById(req.user.id);
 

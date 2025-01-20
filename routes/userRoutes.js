@@ -3,22 +3,22 @@ import {
     registerUser,
     loginUser,
     forgotPassword,
-    resetPassword, // Import the resetPassword controller here
+    resetPassword,
     updateUserProfile,
     getUserProfile,
-} from '../controllers/userController.js'; // Ensure the path to the userController is correct
+} from '../controllers/userController.js';
 import { protect } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
 // Public Routes
-router.post('/register', registerUser); // Route for user registration
-router.post('/login', loginUser); // Route for user login
-router.post('/forgot-password', forgotPassword); // Route for requesting password reset link
-router.post('/reset-password/:userId', resetPassword); // Route for resetting password
+router.post('/register', registerUser);
+router.post('/login', loginUser);
+router.post('/forgot-password', forgotPassword);
+router.post('/reset-password/:userId', resetPassword);
 
 // Protected Routes
-router.get('/profile', protect, getUserProfile); // Get user profile (requires auth)
-router.put('/profile', protect, updateUserProfile); // Update user profile (requires auth)
+router.get('/profile', protect, getUserProfile);
+router.put('/profile', protect, updateUserProfile);
 
 export default router;

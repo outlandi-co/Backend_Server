@@ -1,5 +1,3 @@
-//recover//
-
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto'; // For generating reset tokens
@@ -8,7 +6,7 @@ const userSchema = new mongoose.Schema(
     {
         name: { type: String, required: true },
         email: { type: String, required: true, unique: true },
-        username: { type: String, unique: true, sparse: true }, // Allows null values for username
+        username: { type: String, unique: true, sparse: true }, // Unique but allows null
         password: { type: String, required: true },
         isAdmin: { type: Boolean, default: false },
         resetToken: { type: String }, // Token for password reset
@@ -37,7 +35,7 @@ userSchema.methods.matchPassword = async function (enteredPassword) {
     return bcrypt.compare(enteredPassword, this.password);
 };
 
-// Generate a password reset token
+// Method: Generate a password reset token
 userSchema.methods.generateResetToken = function () {
     const resetToken = crypto.randomBytes(32).toString('hex');
     this.resetToken = crypto.createHash('sha256').update(resetToken).digest('hex'); // Hash the token
@@ -45,4 +43,6 @@ userSchema.methods.generateResetToken = function () {
     return resetToken; // Return plain text token for email
 };
 
-export default mongoose.model('User', userSchema);
+const User = mongoose.model('User', userSchema);
+
+export default User;
