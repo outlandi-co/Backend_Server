@@ -18,20 +18,17 @@ const generateToken = (id) => {
 export const registerUser = asyncHandler(async (req, res) => {
     const { name, email, password } = req.body;
 
-    // Validate input
     if (!name || !email || !password) {
         res.status(400);
         throw new Error('All fields are required.');
     }
 
-    // Check if user already exists
     const userExists = await User.findOne({ email });
     if (userExists) {
         res.status(400);
         throw new Error('User already exists.');
     }
 
-    // Hash password and create new user
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = await User.create({
         name,
@@ -95,16 +92,15 @@ export const forgotPassword = asyncHandler(async (req, res) => {
         throw new Error('No user found with that email address.');
     }
 
-    // Generate reset token
     const resetToken = crypto.randomBytes(32).toString('hex');
     user.resetToken = resetToken;
     user.resetTokenExpires = Date.now() + 3600000; // Token valid for 1 hour
     await user.save();
 
-    // Create reset link
-    const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}&userId=${user._id}`;
+    // Sanitize FRONTEND_URL to remove trailing slash
+    const frontendUrl = process.env.FRONTEND_URL.replace(/\/$/, '');
+    const resetLink = `${frontendUrl}/reset-password?token=${resetToken}&userId=${user._id}`;
 
-    // Configure email transporter
     const transporter = nodemailer.createTransport({
         service: 'gmail',
         auth: {
@@ -117,10 +113,9 @@ export const forgotPassword = asyncHandler(async (req, res) => {
         from: process.env.EMAIL_USER,
         to: email,
         subject: 'Password Reset Request',
-        text: `You requested a password reset. Please use the following link to reset your password: ${resetLink}`,
+        text: `You requested a password reset. Use the following link to reset your password: ${resetLink}`,
     };
 
-    // Send email
     try {
         await transporter.sendMail(mailOptions);
         res.status(200).json({ message: 'Password reset email sent. Please check your inbox.' });
@@ -153,7 +148,6 @@ export const resetPassword = asyncHandler(async (req, res) => {
         throw new Error('Invalid or expired reset token.');
     }
 
-    // Update password and clear token
     user.password = await bcrypt.hash(newPassword, 10);
     user.resetToken = undefined;
     user.resetTokenExpires = undefined;
@@ -192,7 +186,6 @@ export const updateUserProfile = asyncHandler(async (req, res) => {
         throw new Error('User not found.');
     }
 
-    // Update fields
     user.name = req.body.name || user.name;
     user.email = req.body.email || user.email;
 
