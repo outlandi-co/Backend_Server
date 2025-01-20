@@ -8,14 +8,14 @@ import paymentRoutes from './routes/paymentRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import cartRoutes from './routes/cartRoutes.js';
 
-dotenv.config();
+dotenv.config(); // Load environment variables from .env file
 
 // Initialize the Express app
 const app = express();
 
 // Log all incoming requests
 app.use((req, res, next) => {
-    console.log(`Incoming Request: ${req.method} ${req.url}`);
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
     next();
 });
 
@@ -28,6 +28,7 @@ app.use(
             if (!origin || allowedOrigins.includes(origin)) {
                 callback(null, true); // Allow the request
             } else {
+                console.error(`CORS error: origin '${origin}' not allowed`);
                 callback(new Error('Not allowed by CORS'));
             }
         },
@@ -45,11 +46,11 @@ app.get('/health', (req, res) => {
 });
 
 // Define your API routes
-app.use('/api/users', userRoutes);
-app.use('/api/products', productRoutes);
-app.use('/api/uploads', uploadRoutes);
-app.use('/api/payments', paymentRoutes);
-app.use('/api/cart', cartRoutes);
+app.use('/api/users', userRoutes); // Routes for user-related operations
+app.use('/api/products', productRoutes); // Routes for products
+app.use('/api/uploads', uploadRoutes); // Routes for file uploads
+app.use('/api/payments', paymentRoutes); // Routes for payment processing
+app.use('/api/cart', cartRoutes); // Routes for cart operations
 
 // MongoDB Connection with error handling
 mongoose
@@ -62,7 +63,7 @@ mongoose
 
 // Catch-all route for undefined API endpoints
 app.use((req, res, next) => {
-    res.status(404).json({ message: 'API endpoint not found.' });
+    res.status(404).json({ message: `API endpoint '${req.originalUrl}' not found.` });
 });
 
 // Global error handling middleware
@@ -75,7 +76,7 @@ app.use((err, req, res, next) => {
     }
 });
 
-// Start the server on the specified port (default 5001)
+// Start the server on the specified port
 const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => {
     console.log(`🚀 Server is running on port: ${PORT}`);
