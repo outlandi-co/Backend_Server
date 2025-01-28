@@ -30,12 +30,12 @@ if (process.env.NODE_ENV !== 'production') {
 // Rate Limiting to prevent abuse
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // Limit each IP to 100 requests per window
+    max: process.env.RATE_LIMIT || 100, // Default 100 requests
     message: 'Too many requests from this IP, please try again later.',
 });
 app.use(limiter);
 
-// Log all incoming requests (optional, useful for debugging)
+// Log all incoming requests
 app.use((req, res, next) => {
     console.log(`Incoming Request: ${req.method} ${req.url}`);
     next();
@@ -48,7 +48,7 @@ app.use(cors({
         if (!origin || allowedOrigins.includes(origin)) {
             callback(null, true);
         } else {
-            callback(new Error('Not allowed by CORS'));
+            callback(new Error('CORS not allowed for this origin'));
         }
     },
     credentials: true,
@@ -71,7 +71,7 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/cart', cartRoutes);
 
 // MongoDB Connection
-mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+mongoose.connect(process.env.MONGO_URI)
     .then(() => console.log('✅ Connected to MongoDB successfully'))
     .catch((err) => {
         console.error('❌ MongoDB Connection Error:', err.message);
@@ -80,6 +80,7 @@ mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopol
 
 // Catch-all route for undefined API endpoints
 app.use((req, res, next) => {
+    console.error(`❌ 404 Not Found: ${req.method} ${req.url}`);
     res.status(404).json({ message: 'API endpoint not found.' });
 });
 
@@ -91,6 +92,13 @@ app.use((err, req, res, next) => {
             message: err.message || 'Internal Server Error',
         });
     }
+});
+
+// Graceful Shutdown
+process.on('SIGINT', async () => {
+    console.log('🔄 Gracefully shutting down...');
+    await mongoose.connection.close();
+    process.exit(0);
 });
 
 // Start the server on the specified port (default 5001)
