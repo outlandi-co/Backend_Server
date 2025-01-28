@@ -6,7 +6,7 @@ const httpServer = app.listen(PORT, () => {
 
 const io = new Server(httpServer, {
     cors: {
-        origin: 'http://localhost:5173', // Update with your frontend URL
+        origin: ''https://outlandi-co.netlify.app, // Update with your frontend URL
         methods: ['GET', 'POST'],
     },
 });
