@@ -48,6 +48,7 @@ app.use(cors({
         if (!origin || allowedOrigins.includes(origin)) {
             callback(null, true);
         } else {
+            console.error(`CORS Error: Origin ${origin} is not allowed`);
             callback(new Error('CORS not allowed for this origin'));
         }
     },
@@ -57,6 +58,11 @@ app.use(cors({
 // Middleware to parse JSON and URL-encoded bodies
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Root endpoint for basic health check
+app.get('/', (req, res) => {
+    res.status(200).json({ message: 'Welcome to the API!' });
+});
 
 // Health check endpoint for server status
 app.get('/health', (req, res) => {
