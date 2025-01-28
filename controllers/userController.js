@@ -47,7 +47,7 @@ export const registerUser = asyncHandler(async (req, res) => {
             name,
             email: normalizedEmail,
             username: normalizedUsername,
-            password: hashedPassword,
+            password: hashedPassword, // ✅ Ensure hashed password is used
         });
 
         console.log("✅ User successfully saved to MongoDB:", newUser);
@@ -93,6 +93,7 @@ export const loginUser = asyncHandler(async (req, res) => {
     }
 
     console.log("✅ Found User:", user.email);
+    console.log("🔍 Stored Hashed Password in DB:", user.password);
     console.log("🔍 Comparing Entered Password...");
 
     const isMatch = await bcrypt.compare(password, user.password);
@@ -124,15 +125,23 @@ export const forgotPassword = asyncHandler(async (req, res) => {
     const user = await User.findOne({ email });
 
     if (!user) {
+        console.error("❌ User not found with email:", email);
         return res.status(404).json({ message: 'User not found.' });
     }
 
     const resetToken = crypto.randomBytes(32).toString('hex');
     user.resetToken = crypto.createHash('sha256').update(resetToken).digest('hex');
     user.resetTokenExpires = Date.now() + 3600000; // 1 hour
+
     await user.save();
 
-    res.status(200).json({ message: 'Password reset email sent successfully.' });
+    const resetUrl = `${process.env.FRONTEND_URL}/reset-password?userId=${user._id}&token=${resetToken}`;
+    console.log("📧 Reset URL:", resetUrl);
+
+    res.status(200).json({
+        message: 'Password reset email sent successfully.',
+        resetUrl, // For development only, remove in production
+    });
 });
 
 // ✅ Reset Password
