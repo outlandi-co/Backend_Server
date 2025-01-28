@@ -52,8 +52,6 @@ export const registerUser = asyncHandler(async (req, res) => {
     const normalizedEmail = email.trim().toLowerCase();
     const normalizedPassword = password.trim();
 
-    console.log("Normalized email during registration:", normalizedEmail);
-
     try {
         const user = await User.create({
             name,
@@ -61,8 +59,6 @@ export const registerUser = asyncHandler(async (req, res) => {
             username,
             password: normalizedPassword,
         });
-
-        console.log("User registered successfully:", user);
 
         res.status(201).json({
             _id: user.id,
@@ -72,12 +68,38 @@ export const registerUser = asyncHandler(async (req, res) => {
             token: generateToken(user._id),
         });
     } catch (error) {
-        console.error("Error during registration:", error);
         if (error.code === 11000) {
             res.status(400).json({ message: 'Email or username already in use.' });
         } else {
             res.status(500).json({ message: 'Server error. Please try again.' });
         }
+    }
+});
+
+// @desc Login user & get token
+// @route POST /api/users/login
+// @access Public
+export const loginUser = asyncHandler(async (req, res) => {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+        res.status(400).json({ message: 'Email and password are required.' });
+        return;
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+
+    const user = await User.findOne({ email: normalizedEmail });
+
+    if (user && (await bcrypt.compare(password, user.password))) {
+        res.status(200).json({
+            id: user._id,
+            name: user.name,
+            email: user.email,
+            token: generateToken(user._id),
+        });
+    } else {
+        res.status(401).json({ message: 'Invalid email or password.' });
     }
 });
 
@@ -106,8 +128,6 @@ export const forgotPassword = asyncHandler(async (req, res) => {
     const resetUrl = `${process.env.FRONTEND_URL}/reset-password?userId=${user._id}&token=${resetToken}`;
     const message = `You requested a password reset. Please use the following link: ${resetUrl}`;
 
-    console.log("Generated Reset Token:", resetToken);
-
     try {
         await sendEmail({
             email: user.email,
@@ -117,7 +137,6 @@ export const forgotPassword = asyncHandler(async (req, res) => {
 
         res.status(200).json({ message: 'Password reset email sent successfully.' });
     } catch (error) {
-        console.error('Error while sending the email:', error.message);
         res.status(500).json({ message: 'Failed to send reset email. Please try again.' });
     }
 });
@@ -135,7 +154,6 @@ export const resetPassword = asyncHandler(async (req, res) => {
     }
 
     const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
-    console.log("Hashed Token for Comparison:", hashedToken);
 
     const user = await User.findOne({
         _id: userId,
@@ -144,7 +162,6 @@ export const resetPassword = asyncHandler(async (req, res) => {
     });
 
     if (!user) {
-        console.error("Invalid or expired reset token.");
         res.status(400).json({ message: 'Invalid or expired reset token.' });
         return;
     }
@@ -154,7 +171,47 @@ export const resetPassword = asyncHandler(async (req, res) => {
     user.resetTokenExpires = undefined;
     await user.save();
 
-    console.log(`Password reset successfully for user: ${user.email}`);
-
     res.status(200).json({ message: 'Password successfully reset.' });
+});
+
+// @desc Get user profile
+// @route GET /api/users/profile
+// @access Private
+export const getUserProfile = asyncHandler(async (req, res) => {
+    const user = await User.findById(req.user.id);
+
+    if (user) {
+        res.status(200).json({
+            id: user._id,
+            name: user.name,
+            email: user.email,
+        });
+    } else {
+        res.status(404).json({ message: 'User not found.' });
+    }
+});
+
+// @desc Update user profile
+// @route PUT /api/users/profile
+// @access Private
+export const updateUserProfile = asyncHandler(async (req, res) => {
+    const user = await User.findById(req.user.id);
+
+    if (user) {
+        user.name = req.body.name || user.name;
+        user.email = req.body.email || user.email;
+
+        if (req.body.password) {
+            user.password = await bcrypt.hash(req.body.password, 10);
+        }
+
+        const updatedUser = await user.save();
+        res.status(200).json({
+            id: updatedUser._id,
+            name: updatedUser.name,
+            email: updatedUser.email,
+        });
+    } else {
+        res.status(404).json({ message: 'User not found.' });
+    }
 });
