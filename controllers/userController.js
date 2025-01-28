@@ -93,10 +93,12 @@ export const loginUser = asyncHandler(async (req, res) => {
     }
 
     console.log("✅ Found User:", user.email);
-    console.log("🔍 Stored Hashed Password in DB:", user.password);
-    console.log("🔍 Comparing Entered Password...");
+    console.log("🔍 Stored Hashed Password:", user.password);
+    console.log("🔍 Comparing Entered Password:", password);
 
     const isMatch = await bcrypt.compare(password, user.password);
+
+    console.log("🔍 bcrypt.compare Result:", isMatch);
 
     if (!isMatch) {
         console.error("❌ Password mismatch for user:", user.email);
