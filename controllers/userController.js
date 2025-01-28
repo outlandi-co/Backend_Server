@@ -31,9 +31,9 @@ const sendEmail = async ({ email, subject, message }) => {
             text: message,
         });
 
-        console.log(`Email sent successfully to: ${email}`);
+        console.log(`✅ Email sent successfully to: ${email}`);
     } catch (error) {
-        console.error('Error sending email:', error.message);
+        console.error(`❌ Error sending email to ${email}:`, error.message);
         throw new Error('Failed to send email.');
     }
 };
@@ -53,18 +53,16 @@ export const registerUser = asyncHandler(async (req, res) => {
     const normalizedPassword = password.trim();
 
     console.log("Normalized email during registration:", normalizedEmail);
-    console.log("Plaintext password during registration:", normalizedPassword);
 
     try {
-        // Save the user without hashing manually; let the pre('save') middleware handle it
         const user = await User.create({
             name,
             email: normalizedEmail,
             username,
-            password: normalizedPassword, // Store plaintext; middleware will hash
+            password: normalizedPassword,
         });
 
-        console.log("Stored user in the database:", user);
+        console.log("User registered successfully:", user);
 
         res.status(201).json({
             _id: user.id,
@@ -78,50 +76,8 @@ export const registerUser = asyncHandler(async (req, res) => {
         if (error.code === 11000) {
             res.status(400).json({ message: 'Email or username already in use.' });
         } else {
-            res.status(500).json({ message: 'Server error.' });
+            res.status(500).json({ message: 'Server error. Please try again.' });
         }
-    }
-});
-
-// @desc Login user & get token
-// @route POST /api/users/login
-// @access Public
-export const loginUser = asyncHandler(async (req, res) => {
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-        res.status(400).json({ message: 'Email and password are required.' });
-        return;
-    }
-
-    const normalizedEmail = email.trim().toLowerCase();
-    const normalizedPassword = password.trim();
-
-    console.log("Checking email during login:", normalizedEmail);
-
-    const user = await User.findOne({ email: normalizedEmail });
-
-    if (user) {
-        console.log("User found during login:", user);
-        console.log("Stored hashed password:", user.password);
-        console.log("Entered plaintext password:", normalizedPassword);
-
-        const isPasswordMatch = await bcrypt.compare(normalizedPassword, user.password);
-        console.log("Password match:", isPasswordMatch);
-
-        if (isPasswordMatch) {
-            res.status(200).json({
-                id: user._id,
-                name: user.name,
-                email: user.email,
-                token: generateToken(user._id),
-            });
-        } else {
-            res.status(401).json({ message: 'Invalid email or password.' });
-        }
-    } else {
-        console.log("User not found during login.");
-        res.status(401).json({ message: 'Invalid email or password.' });
     }
 });
 
@@ -147,22 +103,24 @@ export const forgotPassword = asyncHandler(async (req, res) => {
     user.resetTokenExpires = Date.now() + 3600000; // 1 hour
     await user.save();
 
-    const resetUrl = `${req.protocol}://${req.get('host')}/api/users/reset-password/${user._id}?token=${resetToken}`;
-    const message = `You requested a password reset. Please use the following link to reset your password: ${resetUrl}`;
+    const resetUrl = `${process.env.FRONTEND_URL}/reset-password?userId=${user._id}&token=${resetToken}`;
+    const message = `You requested a password reset. Please use the following link: ${resetUrl}`;
+
+    console.log("Generated Reset Token:", resetToken);
 
     try {
         await sendEmail({
-          email: user.email,
-          subject: 'Password Reset Request',
-          message,
+            email: user.email,
+            subject: 'Password Reset Request',
+            message,
         });
-      
+
         res.status(200).json({ message: 'Password reset email sent successfully.' });
-      } catch (error) {
+    } catch (error) {
         console.error('Error while sending the email:', error.message);
-        res.status(500).json({ message: 'Failed to send reset email.' });
-      }
-      });
+        res.status(500).json({ message: 'Failed to send reset email. Please try again.' });
+    }
+});
 
 // @desc Reset password
 // @route POST /api/users/reset-password/:userId
@@ -176,13 +134,17 @@ export const resetPassword = asyncHandler(async (req, res) => {
         return;
     }
 
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+    console.log("Hashed Token for Comparison:", hashedToken);
+
     const user = await User.findOne({
         _id: userId,
-        resetToken: crypto.createHash('sha256').update(token).digest('hex'),
+        resetToken: hashedToken,
         resetTokenExpires: { $gt: Date.now() },
     });
 
     if (!user) {
+        console.error("Invalid or expired reset token.");
         res.status(400).json({ message: 'Invalid or expired reset token.' });
         return;
     }
@@ -192,47 +154,7 @@ export const resetPassword = asyncHandler(async (req, res) => {
     user.resetTokenExpires = undefined;
     await user.save();
 
+    console.log(`Password reset successfully for user: ${user.email}`);
+
     res.status(200).json({ message: 'Password successfully reset.' });
-});
-
-// @desc Get user profile
-// @route GET /api/users/profile
-// @access Private
-export const getUserProfile = asyncHandler(async (req, res) => {
-    const user = await User.findById(req.user.id);
-
-    if (user) {
-        res.status(200).json({
-            id: user._id,
-            name: user.name,
-            email: user.email,
-        });
-    } else {
-        res.status(404).json({ message: 'User not found.' });
-    }
-});
-
-// @desc Update user profile
-// @route PUT /api/users/profile
-// @access Private
-export const updateUserProfile = asyncHandler(async (req, res) => {
-    const user = await User.findById(req.user.id);
-
-    if (user) {
-        user.name = req.body.name || user.name;
-        user.email = req.body.email || user.email;
-
-        if (req.body.password) {
-            user.password = await bcrypt.hash(req.body.password, 10);
-        }
-
-        const updatedUser = await user.save();
-        res.status(200).json({
-            id: updatedUser._id,
-            name: updatedUser.name,
-            email: updatedUser.email,
-        });
-    } else {
-        res.status(404).json({ message: 'User not found.' });
-    }
 });
