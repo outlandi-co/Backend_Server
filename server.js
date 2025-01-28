@@ -43,22 +43,18 @@ app.use((req, res, next) => {
 });
 
 // ✅ CORS Configuration
-const allowedOrigins = [
-  'http://localhost:5173', 
-  'https://outlandi-co.netlify.app', 
-  'https://backend-server-otcb.onrender.com' // Add Render backend domain
-];
+const allowedOrigins = ['http://localhost:5173', 'https://outlandi-co.netlify.app'];
 
 app.use(cors({
-  origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
-          callback(null, true);
-      } else {
-          console.error(`❌ CORS Error: Origin ${origin} is not allowed`);
-          callback(new Error('CORS not allowed for this origin'));
-      }
-  },
-  credentials: true,
+    origin: (origin, callback) => {
+        if (!origin || allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            console.error(`❌ CORS Error: Origin ${origin} is not allowed`);
+            callback(new Error('CORS not allowed for this origin'));
+        }
+    },
+    credentials: true, // Allow cookies/credentials
 }));
 
 // ✅ Preflight request handling for all routes
