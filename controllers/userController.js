@@ -152,19 +152,17 @@ export const forgotPassword = asyncHandler(async (req, res) => {
 
     try {
         await sendEmail({
-            email: user.email,
-            subject: 'Password Reset Request',
-            message,
+          email: user.email,
+          subject: 'Password Reset Request',
+          message,
         });
-
+      
         res.status(200).json({ message: 'Password reset email sent successfully.' });
-    } catch (error) {
-        user.resetToken = undefined;
-        user.resetTokenExpires = undefined;
-        await user.save();
+      } catch (error) {
+        console.error('Error while sending the email:', error.message);
         res.status(500).json({ message: 'Failed to send reset email.' });
-    }
-});
+      }
+      });
 
 // @desc Reset password
 // @route POST /api/users/reset-password/:userId
