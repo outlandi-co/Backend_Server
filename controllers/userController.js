@@ -41,13 +41,13 @@ export const registerUser = asyncHandler(async (req, res) => {
 
         console.log("🔍 Hashing password...");
         const hashedPassword = await bcrypt.hash(password, 10);
-
-        console.log("📝 Creating new user...");
+        console.log("🔍 Hashed Password Before Storing:", hashedPassword);
+        
         const newUser = await User.create({
             name,
             email: normalizedEmail,
             username: normalizedUsername,
-            password: hashedPassword, // ✅ Ensure hashed password is used
+            password: hashedPassword, // Ensure this is being saved
         });
 
         console.log("✅ User successfully saved to MongoDB:", newUser);
