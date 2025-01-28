@@ -45,7 +45,10 @@ const sendEmail = async ({ email, subject, message }) => {
 // ✅ Register a new user
 export const registerUser = asyncHandler(async (req, res) => {
     console.log("📝 Incoming Registration Request:", req.body);
-
+    
+    console.log("🔄 Connecting to MongoDB...");
+    console.log("🔄 MongoDB Connection:", process.env.MONGO_URI);
+    
     const { name, email, username, password } = req.body;
 
     if (!name || !email || !username || !password) {
@@ -54,14 +57,11 @@ export const registerUser = asyncHandler(async (req, res) => {
     }
 
     try {
-        const normalizedEmail = email.trim().toLowerCase();
-        const normalizedUsername = username.trim().toLowerCase();
-
-        console.log("🔍 Checking if user already exists in the 'users' collection...");
-        const existingUser = await User.findOne({ $or: [{ email: normalizedEmail }, { username: normalizedUsername }] });
+        console.log("🔍 Checking existing users...");
+        const existingUser = await User.findOne({ email });
 
         if (existingUser) {
-            console.error("❌ User already exists:", { email: normalizedEmail, username: normalizedUsername });
+            console.error("❌ User already exists:", email);
             return res.status(400).json({ message: 'User already exists' });
         }
 
@@ -71,18 +71,16 @@ export const registerUser = asyncHandler(async (req, res) => {
         console.log("📝 Creating new user...");
         const newUser = await User.create({
             name,
-            email: normalizedEmail,
-            username: normalizedUsername,
+            email,
+            username,
             password: hashedPassword,
         });
 
-        console.log("✅ User successfully saved to MongoDB:", newUser);
+        console.log("✅ User successfully saved:", newUser);
 
-        // ✅ Generate JWT Token after successful registration
         const token = generateToken(newUser._id);
         console.log("🛡️ Token Generated:", token);
 
-        // ✅ Return User Data + Token
         res.status(201).json({
             message: 'User registered successfully!',
             user: {
@@ -91,11 +89,11 @@ export const registerUser = asyncHandler(async (req, res) => {
                 email: newUser.email,
                 username: newUser.username,
             },
-            token, // ✅ Send Token
+            token,
         });
 
     } catch (error) {
-        console.error("❌ MongoDB Save Error:", error.message);
+        console.error("❌ MongoDB Save Error:", error);
         res.status(500).json({ message: 'Internal server error', error: error.message });
     }
 });
