@@ -21,7 +21,11 @@ const app = express();
 app.use(helmet());
 
 // Middleware for detailed request logs
-app.use(morgan('dev'));
+if (process.env.NODE_ENV !== 'production') {
+    app.use(morgan('dev')); // Only use detailed logs in development mode
+} else {
+    app.use(morgan('common')); // Use less verbose logs in production
+}
 
 // Rate Limiting to prevent abuse
 const limiter = rateLimit({
@@ -31,7 +35,7 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-// Log all incoming requests
+// Log all incoming requests (optional, useful for debugging)
 app.use((req, res, next) => {
     console.log(`Incoming Request: ${req.method} ${req.url}`);
     next();
@@ -67,7 +71,7 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/cart', cartRoutes);
 
 // MongoDB Connection
-mongoose.connect(process.env.MONGO_URI)
+mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
     .then(() => console.log('✅ Connected to MongoDB successfully'))
     .catch((err) => {
         console.error('❌ MongoDB Connection Error:', err.message);
