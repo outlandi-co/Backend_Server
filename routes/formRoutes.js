@@ -1,5 +1,5 @@
 const express = require('express');
-const nodemailer = require('nodemailer');
+import nodemailer from 'nodemailer';
 const router = express.Router();
 
 router.post('/', async (req, res) => {
