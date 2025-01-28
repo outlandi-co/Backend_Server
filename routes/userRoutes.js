@@ -12,12 +12,21 @@ import { protect } from '../middleware/authMiddleware.js';
 const router = express.Router();
 
 /**
- * @desc Public Routes
- * These routes do not require authentication
+ * ✅ Public Routes
  */
 
-// Register a new user
+// Register a new user (POST)
 router.post('/register', registerUser);
+
+// List all users (GET) – **For Debugging Only**
+router.get('/register', async (req, res) => {
+    try {
+        const users = await User.find().select('-password'); // Don't return passwords
+        res.status(200).json(users);
+    } catch (error) {
+        res.status(500).json({ message: 'Failed to retrieve users.' });
+    }
+});
 
 // Log in a user and return a token
 router.post('/login', loginUser);
@@ -28,16 +37,10 @@ router.post('/forgot-password', forgotPassword);
 // Reset password using a valid token
 router.post('/reset-password/:userId', resetPassword);
 
-
 /**
- * @desc Protected Routes
- * These routes require a valid authentication token
+ * ✅ Protected Routes (Requires Authentication)
  */
-
-// Get the authenticated user's profile
 router.get('/profile', protect, getUserProfile);
-
-// Update the authenticated user's profile
 router.put('/profile', protect, updateUserProfile);
 
 export default router;

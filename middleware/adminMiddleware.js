@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
 import asyncHandler from 'express-async-handler';
-import User from '../models/User.js';
+import User from '../models/userModel.js';
 
 // Protect Middleware (for routes requiring authentication)
 export const protect = asyncHandler(async (req, res, next) => {
