@@ -18,29 +18,23 @@ const router = express.Router();
 // Register a new user (POST)
 router.post('/register', registerUser);
 
-// List all users (GET) – **For Debugging Only**
-router.get('/register', async (req, res) => {
-    try {
-        const users = await User.find().select('-password'); // Don't return passwords
-        res.status(200).json(users);
-    } catch (error) {
-        res.status(500).json({ message: 'Failed to retrieve users.' });
-    }
-});
-
-// Log in a user and return a token
+// Log in a user and return a token (POST)
 router.post('/login', loginUser);
 
-// Send a password reset email
+// Send a password reset email (POST)
 router.post('/forgot-password', forgotPassword);
 
-// Reset password using a valid token
+// Reset password using a valid token (POST)
 router.post('/reset-password/:userId', resetPassword);
 
 /**
  * ✅ Protected Routes (Requires Authentication)
  */
+
+// Get user profile (GET)
 router.get('/profile', protect, getUserProfile);
+
+// Update user profile (PUT)
 router.put('/profile', protect, updateUserProfile);
 
 export default router;

@@ -1,32 +1,49 @@
 import express from 'express';
-import multer from 'multer';
-import path from 'path';
-
-// Set up multer for file storage
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, 'uploads/');
-  },
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + path.extname(file.originalname)); // Unique filename
-  },
-});
-
-const upload = multer({ storage: storage });
+import {
+    registerUser,
+    loginUser,
+    forgotPassword,
+    resetPassword,
+    updateUserProfile,
+    getUserProfile,
+} from '../controllers/userController.js';
+import { protect } from '../middleware/authMiddleware.js';
+import User from '../models/userModel.js'; // Ensure User is imported for debug route
 
 const router = express.Router();
 
-// Handle file upload request
-router.post('/upload', upload.single('file'), (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ message: 'No file uploaded.' });
-  }
+/**
+ * ✅ Public Routes
+ */
 
-  // Respond with the uploaded file information
-  res.json({
-    message: 'File uploaded successfully!',
-    file: req.file,
-  });
+// Register a new user (POST)
+router.post('/register', registerUser);
+
+// List all users (GET) – **For Debugging Only**
+// Ensure this is removed in production or secured behind admin middleware
+router.get('/register', async (req, res) => {
+    try {
+        const users = await User.find().select('-password'); // Exclude password from results
+        res.status(200).json(users);
+    } catch (error) {
+        console.error("❌ Error fetching users:", error.message);
+        res.status(500).json({ message: 'Failed to retrieve users.' });
+    }
 });
+
+// Log in a user and return a token (POST)
+router.post('/login', loginUser);
+
+// Send a password reset email (POST)
+router.post('/forgot-password', forgotPassword);
+
+// Reset password using a valid token (POST)
+router.post('/reset-password/:userId', resetPassword);
+
+/**
+ * ✅ Protected Routes (Requires Authentication)
+ */
+router.get('/profile', protect, getUserProfile);
+router.put('/profile', protect, updateUserProfile);
 
 export default router;

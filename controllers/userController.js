@@ -17,7 +17,7 @@ const generateToken = (id) => {
 // ✅ Register a new user
 export const registerUser = asyncHandler(async (req, res) => {
     console.log("📝 Incoming Registration Request:", req.body);
-    
+
     const { name, email, username, password } = req.body;
 
     if (!name || !email || !username || !password) {
@@ -30,8 +30,8 @@ export const registerUser = asyncHandler(async (req, res) => {
         const normalizedUsername = username.trim().toLowerCase();
 
         console.log("🔍 Checking existing users...");
-        const existingUser = await User.findOne({ 
-            $or: [{ email: normalizedEmail }, { username: normalizedUsername }] 
+        const existingUser = await User.findOne({
+            $or: [{ email: normalizedEmail }, { username: normalizedUsername }],
         });
 
         if (existingUser) {
@@ -41,13 +41,13 @@ export const registerUser = asyncHandler(async (req, res) => {
 
         console.log("🔍 Hashing password...");
         const hashedPassword = await bcrypt.hash(password, 10);
-        console.log("🔍 Hashed Password Before Storing:", hashedPassword);
-        
+
+        console.log("📝 Creating new user...");
         const newUser = await User.create({
             name,
             email: normalizedEmail,
             username: normalizedUsername,
-            password: hashedPassword, // Ensure this is being saved
+            password: hashedPassword, // Store hashed password
         });
 
         console.log("✅ User successfully saved to MongoDB:", newUser);
@@ -65,7 +65,6 @@ export const registerUser = asyncHandler(async (req, res) => {
             },
             token,
         });
-
     } catch (error) {
         console.error("❌ MongoDB Save Error:", error.message);
         res.status(500).json({ message: 'Internal server error' });
@@ -75,6 +74,7 @@ export const registerUser = asyncHandler(async (req, res) => {
 // ✅ Login user
 export const loginUser = asyncHandler(async (req, res) => {
     console.log("🛠️ Login Attempt:", req.body);
+
     const { email, password } = req.body;
 
     if (!email || !password) {
@@ -84,7 +84,7 @@ export const loginUser = asyncHandler(async (req, res) => {
 
     const normalizedEmail = email.trim().toLowerCase();
     console.log("🔍 Checking for user in database with email:", normalizedEmail);
-    
+
     const user = await User.findOne({ email: normalizedEmail });
 
     if (!user) {
@@ -94,7 +94,7 @@ export const loginUser = asyncHandler(async (req, res) => {
 
     console.log("✅ Found User:", user.email);
     console.log("🔍 Stored Hashed Password:", user.password);
-    console.log("🔍 Comparing Entered Password:", password);
+    console.log("🔍 Comparing Entered Password...");
 
     const isMatch = await bcrypt.compare(password, user.password);
 
