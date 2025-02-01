@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import bcrypt from 'bcryptjs';
+import bcrypt from 'bcrypt';
 
 // Define User Schema
 const userSchema = new mongoose.Schema(
@@ -16,13 +16,13 @@ const userSchema = new mongoose.Schema(
     }
 );
 
-// Pre-save middleware to hash the password
-userSchema.pre('save', async function (next) {
-    if (this.isModified('password')) {
-        this.password = await bcrypt.hash(this.password, 10);
-    }
-    next();
-});
+// ❌ REMOVE Pre-Save Middleware - NO DOUBLE HASHING!
+// userSchema.pre('save', async function (next) {
+//     if (this.isModified('password')) {
+//         this.password = await bcrypt.hash(this.password, 10);
+//     }
+//     next();
+// });
 
 // Method to compare passwords
 userSchema.methods.matchPassword = async function (enteredPassword) {

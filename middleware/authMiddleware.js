@@ -1,52 +1,33 @@
 import jwt from 'jsonwebtoken';
 import asyncHandler from 'express-async-handler';
-import User from '../models/userModel.js';
+import User from '../models/userModel.js'; // Ensure correct path
 
-/**
- * @desc Protect Middleware
- * This middleware checks if the user is authenticated by verifying the JWT token.
- * It attaches the user's information to the `req` object, excluding the password.
- */
+// ✅ Protect middleware - Verifies JWT token and authenticates the user
 export const protect = asyncHandler(async (req, res, next) => {
-    let token;
+    let token = req.cookies.jwt;
+    
+    console.log(`🔍 JWT from Cookie: ${token}`);
 
-    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
-        try {
-            // Extract the token from the authorization header
-            token = req.headers.authorization.split(' ')[1];
+    if (!token) {
+        return res.status(401).json({ message: 'Unauthorized - No Token Provided' });
+    }
 
-            // Decode and verify the token
-            const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-            // Find the user in the database and attach user info to req
-            req.user = await User.findById(decoded.id).select('-password');
-
-            // Proceed to the next middleware or route handler
-            next();
-        } catch (error) {
-            console.error('Authorization Error:', error.message);
-
-            // Check for specific token errors
-            if (error.name === 'TokenExpiredError') {
-                res.status(401).json({ message: 'Token expired. Please log in again.' });
-            } else {
-                res.status(401).json({ message: 'Not authorized. Token verification failed.' });
-            }
-        }
-    } else {
-        res.status(401).json({ message: 'Not authorized. No token provided.' });
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        req.user = await User.findById(decoded.id).select('-password');
+        console.log(`✅ Verified User: ${req.user.email}`);
+        next();
+    } catch (error) {
+        console.error('❌ Token Verification Error:', error.message);
+        res.status(401).json({ message: 'Unauthorized - Invalid Token' });
     }
 });
 
-/**
- * @desc Admin Middleware
- * This middleware checks if the authenticated user has admin privileges.
- */
-export const admin = asyncHandler(async (req, res, next) => {
+// ✅ Admin middleware - Ensures only admin users can access specific routes
+export const admin = (req, res, next) => {
     if (req.user && req.user.isAdmin) {
-        // User has admin privileges, allow access
         next();
     } else {
-        res.status(403).json({ message: 'Access denied. Admin privileges required.' });
+        res.status(403).json({ message: 'Access Denied - Admins Only' });
     }
-});
+};

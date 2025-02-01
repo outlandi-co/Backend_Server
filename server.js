@@ -5,108 +5,96 @@ import dotenv from 'dotenv';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
+import cookieParser from 'cookie-parser'; // ✅ Handles JWT in cookies
 import { Server } from 'socket.io';
 
-// Import API route files
+dotenv.config();
+console.log("🔄 Starting server.js...");
+
+const app = express();
+
+// ✅ Security Middleware
+app.use(helmet());
+app.use(morgan(process.env.NODE_ENV === 'production' ? 'common' : 'dev'));
+app.use(cookieParser());
+
+// ✅ Rate Limiting (Prevents Abuse)
+const limiter = rateLimit({
+    windowMs: 5 * 60 * 1000, // ⏳ 5 minutes
+    max: 500, // 🔥 Increase limit to 500 requests per 5 minutes
+    message: 'Too many requests from this IP, please try again later.',
+});
+app.use(limiter);
+
+// ✅ CORS Configuration - Allows Cookies & Frontend Access
+const allowedOrigins = [process.env.FRONTEND_URL || 'http://localhost:5173'];
+
+app.use(
+    cors({
+        origin: allowedOrigins,
+        credentials: true, // ✅ Required for cookies
+    })
+);// ✅ Ensures CORS Headers are Set
+app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    next();
+});
+
+// ✅ Middleware for Parsing JSON and URL-encoded Bodies
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.options('*', cors()); // ✅ Handle Preflight Requests
+
+// ✅ Health Check Routes
+app.get('/', (req, res) => res.status(200).json({ message: 'Welcome to the API!' }));
+app.get('/health', (req, res) => res.status(200).json({ message: 'Server is running and healthy!' }));
+
+// ✅ Import API Routes
 import productRoutes from './routes/productRoutes.js';
 import uploadRoutes from './routes/uploadRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import cartRoutes from './routes/cartRoutes.js';
 
-dotenv.config();
-
-// ✅ Debugging Log
-console.log("🔄 Starting server.js...");
-
-// Initialize Express app
-const app = express();
-
-// Middleware for security headers
-app.use(helmet());
-
-// Middleware for detailed request logs
-app.use(morgan(process.env.NODE_ENV === 'production' ? 'common' : 'dev'));
-
-// ✅ Rate Limiting to prevent abuse
-const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: parseInt(process.env.RATE_LIMIT || 100, 10), // Default 100 requests
-    message: 'Too many requests from this IP, please try again later.',
-});
-app.use(limiter);
-
-// ✅ Log all incoming requests
-app.use((req, res, next) => {
-    console.log(`[${new Date().toISOString()}] Incoming Request: ${req.method} ${req.url}`);
-    next();
-});
-
-// ✅ CORS Configuration
-const allowedOrigins = ['http://localhost:5173', 'https://outlandi-co.netlify.app'];
-
-app.use(cors({
-    origin: (origin, callback) => {
-        if (!origin || allowedOrigins.includes(origin)) {
-            callback(null, true);
-        } else {
-            console.error(`❌ CORS Error: Origin ${origin} is not allowed`);
-            callback(new Error('CORS not allowed for this origin'));
-        }
-    },
-    credentials: true, // Allow cookies/credentials
-}));
-
-// ✅ Preflight request handling for all routes
-app.options('*', cors());
-
-// ✅ Middleware for parsing JSON and URL-encoded bodies
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-// ✅ Root endpoint for basic health check
-app.get('/', (req, res) => {
-    res.status(200).json({ message: 'Welcome to the API!' });
-});
-
-// ✅ Health check endpoint for server status
-app.get('/health', (req, res) => {
-    res.status(200).json({ message: 'Server is running and healthy!' });
-});
-
-// ✅ Define API routes
+// ✅ Define API Routes
 app.use('/api/users', userRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/uploads', uploadRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/cart', cartRoutes);
 
-// ✅ MongoDB Connection with retry logic
+// ✅ MongoDB Connection with Retry Logic
 const connectDB = async () => {
-  try {
-      console.log("🔄 Connecting to MongoDB...");
+    try {
+        console.log("🔄 Connecting to MongoDB...");
+        if (!process.env.MONGO_URI) {
+            throw new Error("❌ MONGO_URI is not set in environment variables.");
+        }
 
-      const conn = await mongoose.connect(process.env.MONGO_URI, {
-          dbName: 'Apparel', // ✅ Ensure it connects to the Apparel database
-      });
+        const conn = await mongoose.connect(process.env.MONGO_URI, {
+            dbName: 'Apparel', // ✅ Ensure correct database connection
+        });
 
-      console.log(`✅ Connected to MongoDB: ${conn.connection.host}`);
-      console.log(`📌 Using Database: ${conn.connection.db.databaseName}`); // Should output "Apparel"
-  } catch (err) {
-      console.error('❌ MongoDB Connection Error:', err.message);
-      setTimeout(connectDB, 5000); // Retry after 5 seconds
-  }
+        console.log(`✅ Connected to MongoDB: ${conn.connection.host}`);
+        console.log(`📌 Using Database: ${conn.connection.db.databaseName}`);
+    } catch (err) {
+        console.error('❌ MongoDB Connection Error:', err.message);
+        console.error('🔄 Retrying in 5 seconds...');
+        setTimeout(connectDB, 5000);
+    }
 };
-
 connectDB();
 
-// ✅ Catch-all route for undefined API endpoints
+// ✅ Handle 404 Errors
 app.use((req, res) => {
     console.error(`❌ 404 Not Found: ${req.method} ${req.url}`);
     res.status(404).json({ message: 'API endpoint not found.' });
 });
 
-// ✅ Global error handling middleware
+// ✅ Global Error Handling Middleware
 app.use((err, req, res, next) => {
     console.error('❌ Global Error Handler:', err.stack);
     if (!res.headersSent) {
@@ -124,42 +112,42 @@ const gracefulShutdown = async (signal) => {
     process.exit(0);
 };
 
-// Handle server shutdown signals
+// ✅ Handle Server Shutdown Signals
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 
-// ✅ Initialize HTTP server
+// ✅ Initialize HTTP Server
 const PORT = process.env.PORT || 5001;
 const httpServer = app.listen(PORT, () => {
-    console.log(`🚀 Server is running on port: ${PORT}`);
+    console.log(`🚀 Server is running on http://localhost:${PORT}`);
 });
 
-// ✅ Initialize Socket.IO server
+// ✅ Initialize Socket.IO Server for Real-time Features
 const io = new Server(httpServer, {
     cors: {
-        origin: 'https://outlandi-co.netlify.app', // Replace with frontend URL
+        origin: allowedOrigins, // ✅ Allow frontend URL for WebSockets
         methods: ['GET', 'POST'],
     },
 });
 console.log('✅ Socket.IO Server Initialized');
 
-// ✅ Handle Socket.IO connections
+// ✅ Handle Socket.IO Connections
 io.on('connection', (socket) => {
     console.log(`🟢 A user connected: ${socket.id}`);
 
     // Handle stock updates
     socket.on('updateStock', ({ productId, stock }) => {
         console.log(`📦 Stock Updated: Product ID: ${productId}, New Stock: ${stock}`);
-        io.emit('stockUpdated', { productId, stock }); // Broadcast update
+        io.emit('stockUpdated', { productId, stock });
     });
 
-    // Handle disconnections
+    // Handle user disconnection
     socket.on('disconnect', () => {
         console.log(`🔴 A user disconnected: ${socket.id}`);
     });
 });
 
-// ✅ Function to broadcast stock updates
+// ✅ Function to Broadcast Stock Updates
 export const updateStock = (productId, stock) => {
     console.log(`📢 Broadcasting Stock Update: ${productId} - ${stock}`);
     io.emit('stockUpdated', { productId, stock });

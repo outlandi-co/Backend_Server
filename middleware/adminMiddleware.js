@@ -2,55 +2,69 @@ import jwt from 'jsonwebtoken';
 import asyncHandler from 'express-async-handler';
 import User from '../models/userModel.js';
 
-// Protect Middleware (for routes requiring authentication)
+/**
+ * ✅ Protect Middleware - Verifies JWT Token
+ * - Checks for token in Authorization Header (`Bearer <token>`)
+ * - If not found, checks cookies (`jwt`)
+ * - Attaches authenticated user to `req.user`
+ */
 export const protect = asyncHandler(async (req, res, next) => {
     let token;
 
-    // Check for authorization header and ensure it starts with 'Bearer'
+    console.log("🔍 Checking for authentication token...");
+
+    // ✅ Check Authorization Header for Bearer Token
     if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
-        try {
-            // Extract token from the header
-            token = req.headers.authorization.split(' ')[1];
+        token = req.headers.authorization.split(' ')[1];
+        console.log("📌 Found Bearer Token in Headers:", token);
+    }
+    // ✅ If no Bearer Token, check for JWT in Cookies
+    else if (req.cookies.jwt) {
+        token = req.cookies.jwt;
+        console.log("🍪 Found JWT Token in Cookies:", token);
+    }
 
-            // Verify and decode the JWT token
-            const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if (!token) {
+        console.error("❌ No token provided. User not authorized.");
+        return res.status(401).json({ message: "Not authorized. No token provided." });
+    }
 
-            // Attach user information to the request object, excluding sensitive fields like password
-            req.user = await User.findById(decoded.id).select('-password');
+    try {
+        // ✅ Decode and verify the token
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-            if (!req.user) {
-                res.status(404).json({ message: 'User not found. Invalid token.' });
-                return;
-            }
+        // ✅ Attach user to request (excluding password)
+        req.user = await User.findById(decoded.id).select('-password');
 
-            // Proceed to the next middleware or route handler
-            next();
-        } catch (error) {
-            console.error('Authorization error:', error.message);
-
-            // Differentiate between token expiration and other verification errors
-            if (error.name === 'TokenExpiredError') {
-                res.status(401).json({
-                    message: 'Token expired. Please log in again.',
-                });
-            } else {
-                res.status(401).json({
-                    message: 'Not authorized. Token verification failed.',
-                });
-            }
+        if (!req.user) {
+            console.error("❌ User not found in database.");
+            return res.status(401).json({ message: "Not authorized. User not found." });
         }
-    } else {
-        // Handle missing token
-        res.status(401).json({ message: 'Not authorized. No token provided.' });
+
+        console.log(`✅ User Authenticated: ${req.user.email}`);
+        next();
+    } catch (error) {
+        console.error("❌ Authorization Error:", error.message);
+
+        // Handle different JWT errors
+        if (error.name === 'TokenExpiredError') {
+            res.status(401).json({ message: "Token expired. Please log in again." });
+        } else {
+            res.status(401).json({ message: "Not authorized. Token verification failed." });
+        }
     }
 });
 
-// Admin Middleware (for routes requiring admin access)
+/**
+ * ✅ Admin Middleware - Restricts access to Admin Users
+ * - Ensures `req.user` exists and `isAdmin` is `true`
+ */
 export const admin = asyncHandler(async (req, res, next) => {
     if (req.user && req.user.isAdmin) {
-        // User has admin privileges, allow access
+        console.log(`🔑 Admin Access Granted: ${req.user.email}`);
         next();
     } else {
-        res.status(403).json({ message: 'Access denied. Admin privileges required.' });
+        console.error(`🚫 Access Denied: ${req.user ? req.user.email : "No User"}`);
+        res.status(403).json({ message: "Access denied. Admin privileges required." });
     }
 });

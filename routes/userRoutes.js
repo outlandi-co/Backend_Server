@@ -2,6 +2,7 @@ import express from 'express';
 import {
     registerUser,
     loginUser,
+    logoutUser,
     forgotPassword,
     resetPassword,
     updateUserProfile,
@@ -12,29 +13,53 @@ import { protect } from '../middleware/authMiddleware.js';
 const router = express.Router();
 
 /**
- * ✅ Public Routes
+ * ✅ Public Routes (No Authentication Required)
  */
 
-// Register a new user (POST)
-router.post('/register', registerUser);
+// ✅ Register a new user (POST)
+router.post('/register', (req, res, next) => {
+    console.log(`🛠️ Register route hit | Email: ${req.body.email}`);
+    next();
+}, registerUser);
 
-// Log in a user and return a token (POST)
-router.post('/login', loginUser);
+// ✅ Log in a user and return a token (POST)
+router.post('/login', (req, res, next) => {
+    console.log(`🔑 Login route hit | Email: ${req.body.email}`);
+    next();
+}, loginUser);
 
-// Send a password reset email (POST)
-router.post('/forgot-password', forgotPassword);
+// ✅ Define Logout Route with DELETE Method
+router.delete('/logout', (req, res, next) => {
+    console.log("🚪 Logout route hit");
+    next();
+}, logoutUser);
 
-// Reset password using a valid token (POST)
-router.post('/reset-password/:userId', resetPassword);
+// ✅ Send a password reset email (POST)
+router.post('/forgot-password', (req, res, next) => {
+    console.log(`📨 Forgot Password route hit | Email: ${req.body.email}`);
+    next();
+}, forgotPassword);
+
+// ✅ Reset password using a valid token (POST)
+router.post('/reset-password/:userId', (req, res, next) => {
+    console.log(`🔑 Reset Password route hit | User ID: ${req.params.userId}`);
+    next();
+}, resetPassword);
 
 /**
  * ✅ Protected Routes (Requires Authentication)
  */
 
-// Get user profile (GET)
-router.get('/profile', protect, getUserProfile);
+// ✅ Get user profile (GET) - Requires JWT in Cookie
+router.get('/profile', protect, (req, res, next) => {
+    console.log(`🔍 Get Profile route hit | User ID: ${req.user.id}`);
+    next();
+}, getUserProfile);
 
-// Update user profile (PUT)
-router.put('/profile', protect, updateUserProfile);
+// ✅ Update user profile (PUT) - Requires JWT in Cookie
+router.put('/profile', protect, (req, res, next) => {
+    console.log(`✏️ Update Profile route hit | User ID: ${req.user.id}`);
+    next();
+}, updateUserProfile);
 
 export default router;
