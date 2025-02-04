@@ -1,9 +1,7 @@
 import asyncHandler from 'express-async-handler';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import crypto from 'crypto';
 import User from '../models/userModel.js';
-import { sendEmail } from '../utils/sendEmail.js'; // ✅ Use named import
 
 /**
  * ✅ Generate JWT Token
@@ -64,153 +62,110 @@ export const registerUser = asyncHandler(async (req, res) => {
     }
 });
 
-/**
- * ✅ Login User
- */
 export const loginUser = asyncHandler(async (req, res) => {
     const { email, password } = req.body;
-    
-    console.log(`🛠️ Login Attempt: Email: ${email}, Password: ${password}`);
+
+    console.log(`🔑 Attempting login for email: ${email}`);
 
     const user = await User.findOne({ email });
 
-    if (user && (await user.matchPassword(password))) {
-        console.log(`✅ Login Successful for: ${user.email}`);
-        
-        const token = generateToken(user._id);
-
-        res.cookie('jwt', token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'Strict',
-            maxAge: 7 * 24 * 60 * 60 * 1000,
-        });
-
-        res.json({
-            _id: user._id,
-            name: user.name,
-            email: user.email,
-            isAdmin: user.isAdmin,
-        });
-    } else {
-        console.warn('❌ Invalid email or password');
-        res.status(401).json({ message: 'Invalid email or password' });
+    if (!user || !(await user.matchPassword(password))) {
+        console.warn("🚨 Invalid email or password!");
+        return res.status(401).json({ message: 'Invalid email or password' });
     }
+
+    const token = generateToken(user._id);
+
+    // ✅ Set JWT in HTTP-only Cookie
+res.cookie('jwt', token, {
+    httpOnly: true, // ✅ Prevents access from JavaScript
+    secure: process.env.NODE_ENV === 'production', // ✅ Secure in production
+    sameSite: 'None', // ✅ Important for cross-site requests
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+});
+    
+    console.log(`✅ Login successful for: ${email}`);
+
+    res.json({
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        isAdmin: user.isAdmin
+    });
+});
+
+export const logoutUser = asyncHandler(async (req, res) => {
+    console.log("🚪 Logging out user...");
+
+    res.cookie('jwt', '', {
+        httpOnly: true,
+        expires: new Date(0), // Expire the cookie
+    });
+
+    res.status(200).json({ message: 'Logged out successfully' });
 });
 
 /**
- * ✅ Forgot Password
+ * ✅ Forgot Password (Send Reset Link)
  */
 export const forgotPassword = asyncHandler(async (req, res) => {
     const { email } = req.body;
-    console.log("📨 Forgot Password Request for:", email);
-
     const user = await User.findOne({ email });
+
     if (!user) {
-        console.error("❌ No user found with email:", email);
-        return res.status(404).json({ message: "User not found" });
+        return res.status(404).json({ message: 'User not found' });
     }
 
-    const resetToken = crypto.randomBytes(32).toString('hex');
-    const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+    // ✅ Generate Reset Token (Valid for 15 min)
+    const resetToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '15m' });
 
-    user.resetToken = hashedToken;
-    user.resetTokenExpires = Date.now() + 3600000;
-    await user.save();
+    console.log(`📧 Sending reset email to ${email} with token: ${resetToken}`);
 
-    const frontendURL = process.env.NODE_ENV === "development" ? "http://localhost:5173" : process.env.FRONTEND_URL;
-    const resetURL = `${frontendURL}/reset-password?userId=${user._id}&token=${resetToken}`;
+    res.json({ message: 'Reset email sent', resetToken, userId: user._id });
+});
 
-    console.log("📧 Reset URL:", resetURL);
+export const resetPassword = asyncHandler(async (req, res) => {
+    const { userId, token } = req.params;
+    const { password } = req.body;
 
     try {
-        await sendEmail({ to: user.email, subject: "Password Reset Request", text: `Click the link to reset your password: ${resetURL}` });
-        console.log("✅ Email Sent Successfully!");
-        res.json({ message: "Reset email sent" });
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+        if (decoded.id !== userId) {
+            return res.status(401).json({ message: 'Invalid token or user mismatch' });
+        }
+
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        user.password = await bcrypt.hash(password, 10);
+        await user.save();
+
+        res.json({ success: true, message: 'Password reset successful!' });
     } catch (error) {
-        console.error("❌ Email Sending Failed:", error.message);
-        res.status(500).json({ message: "Email sending failed" });
+        console.error("❌ Reset Password Error:", error);
+        res.status(400).json({ message: 'Invalid or expired token' });
     }
 });
-
-/**
- * ✅ Reset Password
- */
-export const resetPassword = asyncHandler(async (req, res) => {
-    const { token, newPassword } = req.body;
-    const { userId } = req.params;
-
-    console.log("📨 Reset Password Request for User:", userId);
-
-    if (!token || !newPassword) {
-        return res.status(400).json({ message: 'Token and new password are required.' });
-    }
-
-    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
-    const user = await User.findOne({ _id: userId, resetToken: hashedToken, resetTokenExpires: { $gt: Date.now() } });
-
-    if (!user) {
-        console.error("❌ Invalid or expired reset token.");
-        return res.status(400).json({ message: 'Invalid or expired reset token.' });
-    }
-
-    user.password = await bcrypt.hash(newPassword, 10);
-    user.resetToken = undefined;
-    user.resetTokenExpires = undefined;
-    await user.save();
-
-    res.status(200).json({ message: '✅ Password successfully reset.' });
-});
-
-
-/**
- * ✅ Logout User
- * @route DELETE /api/users/logout
- * @access Private
- */
-export const logoutUser = (req, res) => {
-    res.cookie('jwt', '', {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production', // Secure in production
-        sameSite: 'Strict',
-        expires: new Date(0), // ✅ Expire immediately
-    });
-
-    console.log("🚪 User Logged Out");
-    res.status(200).json({ message: 'Logged out successfully' });
-};
 
 /**
  * ✅ Get User Profile
  */
 export const getUserProfile = asyncHandler(async (req, res) => {
-    console.log("🔍 Checking cookies:", req.cookies);
-
-    const token = req.cookies.jwt || req.headers.authorization?.split(" ")[1];
-    console.log("🛠 Token Received:", token);
-
-    if (!token) {
-        console.error("❌ No token found!");
-        return res.status(401).json({ message: 'Unauthorized: No token provided.' });
+    if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized - No user found" });
     }
 
-    try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        console.log("🔑 Decoded Token:", decoded);
+    const user = await User.findById(req.user._id).select('-password');
 
-        const user = await User.findById(decoded.id).select('-password');
-        
-        if (!user) {
-            console.error("❌ User not found for token ID:", decoded.id);
-            return res.status(404).json({ message: 'User not found.' });
-        }
-
-        console.log("✅ Found User:", user);
-        res.status(200).json(user);
-    } catch (error) {
-        console.error("❌ Invalid Token:", error);
-        res.status(401).json({ message: 'Invalid token.' });
+    if (!user) {
+        return res.status(404).json({ message: "User not found" });
     }
+
+    console.log("✅ Returning user profile:", user);
+    res.json(user);
 });
 
 /**
@@ -233,3 +188,5 @@ export const updateUserProfile = asyncHandler(async (req, res) => {
         res.status(404).json({ message: 'User not found.' });
     }
 });
+
+

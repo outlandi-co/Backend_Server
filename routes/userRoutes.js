@@ -17,49 +17,28 @@ const router = express.Router();
  */
 
 // ✅ Register a new user (POST)
-router.post('/register', (req, res, next) => {
-    console.log(`🛠️ Register route hit | Email: ${req.body.email}`);
-    next();
-}, registerUser);
+router.post('/register', registerUser);
 
-// ✅ Log in a user and return a token (POST)
-router.post('/login', (req, res, next) => {
-    console.log(`🔑 Login route hit | Email: ${req.body.email}`);
-    next();
-}, loginUser);
+// ✅ Log in a user (POST)
+router.post('/login', loginUser);
 
-// ✅ Define Logout Route with DELETE Method
-router.delete('/logout', (req, res, next) => {
-    console.log("🚪 Logout route hit");
-    next();
-}, logoutUser);
+// ✅ Log out a user (POST) - Clears JWT cookie
+router.post('/logout', logoutUser);
 
-// ✅ Send a password reset email (POST)
-router.post('/forgot-password', (req, res, next) => {
-    console.log(`📨 Forgot Password route hit | Email: ${req.body.email}`);
-    next();
-}, forgotPassword);
+// ✅ Forgot Password - Send Reset Link (POST)
+router.post('/forgot-password', forgotPassword);
 
-// ✅ Reset password using a valid token (POST)
-router.post('/reset-password/:userId', (req, res, next) => {
-    console.log(`🔑 Reset Password route hit | User ID: ${req.params.userId}`);
-    next();
-}, resetPassword);
+// ✅ Reset Password - With User ID and Token (POST)
+router.post('/reset-password/:userId/:token', resetPassword);
 
 /**
- * ✅ Protected Routes (Requires Authentication)
+ * ✅ Protected Routes (Requires JWT Token)
  */
 
 // ✅ Get user profile (GET) - Requires JWT in Cookie
-router.get('/profile', protect, (req, res, next) => {
-    console.log(`🔍 Get Profile route hit | User ID: ${req.user.id}`);
-    next();
-}, getUserProfile);
+router.get('/profile', protect, getUserProfile);
 
 // ✅ Update user profile (PUT) - Requires JWT in Cookie
-router.put('/profile', protect, (req, res, next) => {
-    console.log(`✏️ Update Profile route hit | User ID: ${req.user.id}`);
-    next();
-}, updateUserProfile);
+router.put('/profile', protect, updateUserProfile);
 
 export default router;
